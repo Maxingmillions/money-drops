@@ -206,7 +206,7 @@ export function MapScreen({ guest = false }: { guest?: boolean }) {
         </div>
 
         {/* Controls */}
-        <div className="absolute right-4 top-[calc(env(safe-area-inset-top)+134px)] z-10 flex flex-col gap-2 lg:top-4">
+        <div className="absolute right-4 top-[calc(env(safe-area-inset-top)+134px)] z-10 flex flex-col gap-2 lg:top-16">
           <button className="icon-btn" aria-label="Centre on me" title="Centre on me" onClick={() => setFollowKey((k) => k + 1)}>
             <Crosshair size={18} />
           </button>

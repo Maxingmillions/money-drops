@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Wallet, Map as MapIcon, Plus, LogOut, LineChart, Target, MessageCircle } from "lucide-react";
 import { Coin } from "./Coin";
 import { BottomNav } from "./BottomNav";
+import { WalletPill } from "./WalletPill";
 import { api } from "@/lib/client";
 
 const items = [
@@ -48,6 +49,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </button>
       </aside>
       <div className="shell-main">{children}</div>
+      {/* Desktop: wallet pill pinned top-right. Phones get it inline on the wallet page. */}
+      <div className="pointer-events-none fixed right-6 top-4 z-30 hidden lg:block">
+        <WalletPill className="pointer-events-auto" />
+      </div>
       {!hideMobileNav && <BottomNav />}
     </div>
   );

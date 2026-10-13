@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { SolAmount, SolMark } from "./Sol";
+import { WalletPill } from "./WalletPill";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
@@ -60,6 +61,9 @@ export function Home() {
     <main className="page px-5 pt-6 pb-32 lg:pb-10">
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-10">
       <div>
+      <div className="mb-4 flex justify-end lg:hidden">
+        <WalletPill />
+      </div>
       {nearest ? (
         <Link href={`/map?drop=${nearest.id}`} className="card mb-6 flex items-center gap-3 p-3 pr-4">
           <Coin size={40} />
