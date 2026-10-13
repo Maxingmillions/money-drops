@@ -49,15 +49,15 @@ export const POST = handler(async (req) => {
 });
 
 export const GET = handler(async (req) => {
-  await requireSession();
   const url = new URL(req.url);
   const lat = Number(url.searchParams.get("lat"));
   const lng = Number(url.searchParams.get("lng"));
   const at = url.searchParams.has("lat") && Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
   const mine = url.searchParams.get("mine") === "1";
-  const session = await requireSession();
+  // Open bounties are public; "mine" needs an account.
+  const session = mine ? await requireSession() : null;
   const rows = await prisma.bounty.findMany({
-    where: mine ? { creatorId: session.userId } : { status: { in: ["OPEN", "COMPLETED"] } },
+    where: mine && session ? { creatorId: session.userId } : { status: { in: ["OPEN", "COMPLETED"] } },
     include: { creator: true, submissions: { select: { status: true } } },
     orderBy: { createdAt: "desc" },
     take: 100,

@@ -14,9 +14,10 @@ import type { PublicDrop } from "@/lib/drops";
 // Where the map opens before we have a GPS fix (matches the seed data).
 const FALLBACK: LatLng = { lat: 35.6717, lng: 139.6949 };
 
-export function MapScreen() {
+export function MapScreen({ guest = false }: { guest?: boolean }) {
   const router = useRouter();
   const params = useSearchParams();
+  const hunt = (id: string) => router.push(guest ? `/sign-in?next=${encodeURIComponent(`/hunt/${id}`)}` : `/hunt/${id}`);
   const { position, error, isSimulated, setSimulated } = useGeolocation();
   const [drops, setDrops] = useState<PublicDrop[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(params.get("drop"));
@@ -92,11 +93,11 @@ export function MapScreen() {
   }));
 
   return (
-    <main className="relative h-dvh overflow-hidden lg:grid lg:grid-cols-[380px_minmax(0,1fr)]">
+    <main className={`relative overflow-hidden lg:grid lg:grid-cols-[380px_minmax(0,1fr)] ${guest ? "h-[calc(100dvh-57px)]" : "h-dvh"}`}>
       {/* Desktop side panel */}
-      <aside className="hidden h-dvh flex-col border-r border-line bg-elev lg:flex">
+      <aside className={`hidden flex-col border-r border-line bg-elev lg:flex ${guest ? "h-[calc(100dvh-57px)]" : "h-dvh"}`}>
         <div className="border-b border-line p-5">
-          <h1 className="text-xl font-bold">Hunt</h1>
+          <h1 className="text-xl font-bold">{guest ? "Live drops" : "Hunt"}</h1>
           <p className="text-sm text-muted">{summary}</p>
           {error && !position && <p className="mt-2 text-xs text-danger">{error}</p>}
         </div>
@@ -105,7 +106,7 @@ export function MapScreen() {
             <button className="mb-3 text-sm text-muted hover:text-fg" onClick={() => setSelectedId(null)}>
               ← All drops
             </button>
-            <DropDetail drop={selected} onHunt={() => router.push(`/hunt/${selected.id}`)} />
+            <DropDetail drop={selected} guest={guest} onHunt={() => hunt(selected.id)} />
           </div>
         ) : (
           <ul className="flex-1 overflow-y-auto">
@@ -170,9 +171,11 @@ export function MapScreen() {
 
         {/* Mobile top bar */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center gap-2 p-4 pt-[calc(env(safe-area-inset-top)+12px)] lg:hidden">
-          <Link href="/home" className="icon-btn pointer-events-auto">
-            <ChevronLeft size={20} />
-          </Link>
+          {!guest && (
+            <Link href="/home" className="icon-btn pointer-events-auto">
+              <ChevronLeft size={20} />
+            </Link>
+          )}
           <div className="card pointer-events-auto flex min-w-0 flex-1 items-center gap-3 px-3 py-2">
             <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-600 text-sm font-bold text-white">
               {(headline?.creator ?? "D").slice(0, 1).toUpperCase()}
@@ -182,9 +185,11 @@ export function MapScreen() {
               <div className="truncate text-xs text-muted">{summary}</div>
             </div>
           </div>
-          <Link href="/hide" className="icon-btn pointer-events-auto">
-            <Plus size={20} />
-          </Link>
+          {!guest && (
+            <Link href="/hide" className="icon-btn pointer-events-auto">
+              <Plus size={20} />
+            </Link>
+          )}
         </div>
 
         {/* Controls */}
@@ -222,7 +227,7 @@ export function MapScreen() {
           <div className="absolute inset-x-0 bottom-0 z-40 px-3 pb-[calc(env(safe-area-inset-bottom)+12px)] lg:hidden">
             <div className="card p-5">
               <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-line" />
-              <DropDetail drop={selected} onHunt={() => router.push(`/hunt/${selected.id}`)} />
+              <DropDetail drop={selected} guest={guest} onHunt={() => hunt(selected.id)} />
             </div>
           </div>
         )}
@@ -231,7 +236,7 @@ export function MapScreen() {
   );
 }
 
-function DropDetail({ drop, onHunt }: { drop: PublicDrop; onHunt: () => void }) {
+function DropDetail({ drop, onHunt, guest = false }: { drop: PublicDrop; onHunt: () => void; guest?: boolean }) {
   return (
     <div>
       <div className="flex items-center gap-3">
@@ -274,7 +279,7 @@ function DropDetail({ drop, onHunt }: { drop: PublicDrop; onHunt: () => void }) 
         </li>
       </ul>
       <button className="btn btn-primary mt-5 w-full" onClick={onHunt}>
-        <Compass size={18} /> Start the hunt
+        <Compass size={18} /> {guest ? "Sign in to hunt this" : "Start the hunt"}
       </button>
     </div>
   );

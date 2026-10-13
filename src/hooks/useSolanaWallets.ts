@@ -87,3 +87,31 @@ export function phantomBrowseLink(url: string) {
   const origin = new URL(url).origin;
   return `https://phantom.app/ul/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(origin)}`;
 }
+
+/**
+ * Wallets we can hand the page to on a phone (each opens the site inside the
+ * wallet's own browser, where it injects itself and sign-in works), plus
+ * install links for desktop.
+ */
+export const WALLET_APPS = [
+  {
+    name: "Phantom",
+    color: "#ab9ff2",
+    browse: phantomBrowseLink,
+    install: "https://phantom.app/download",
+  },
+  {
+    name: "Solflare",
+    color: "#fc7227",
+    browse: (url: string) => `https://solflare.com/ul/v1/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(new URL(url).origin)}`,
+    install: "https://solflare.com/download",
+  },
+  {
+    name: "Backpack",
+    color: "#e33e3f",
+    browse: (url: string) => `https://backpack.app/ul/v1/browse/${encodeURIComponent(url)}?ref=${encodeURIComponent(new URL(url).origin)}`,
+    install: "https://backpack.app/download",
+  },
+] as const;
+
+export const isMobile = () => typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);

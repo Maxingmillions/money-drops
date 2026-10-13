@@ -2,17 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useIdentityToken, useLogin, usePrivy } from "@privy-io/react-auth";
 import { useWallets } from "@privy-io/react-auth/solana";
-import { Mail, Sparkles, FlaskConical, Smartphone, ExternalLink, KeyRound } from "lucide-react";
+import { Mail, Sparkles, FlaskConical, Smartphone, ExternalLink, KeyRound, Map as MapIcon, Target } from "lucide-react";
 import { SolCoin } from "./SolCoin";
 import { DropsTokenCard } from "./DropsToken";
 import { PRIVY_APP_ID } from "./Providers";
 import { api, ClientError } from "@/lib/client";
-import { phantomBrowseLink, useSolanaWallets, type SolanaWallet } from "@/hooks/useSolanaWallets";
+import { WALLET_APPS, isMobile, useSolanaWallets, type SolanaWallet } from "@/hooks/useSolanaWallets";
 
-const DEV_LOGIN_UI = process.env.NEXT_PUBLIC_DEV_LOGIN === "true" || process.env.NODE_ENV !== "production";
+const DEV_LOGIN_UI = process.env.NODE_ENV !== "production";
 
 function useFinishSignIn() {
   const router = useRouter();
@@ -50,6 +51,17 @@ export function SignIn() {
             <Sparkles className="mr-1 inline" size={12} />
             No wallet? Email sign-up creates a Solana wallet for you.
           </p>
+          <div className="pt-2">
+            <p className="mb-2 text-center text-xs text-faint">Just looking?</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Link href="/explore" className="btn btn-secondary !py-3 text-sm">
+                <MapIcon size={16} /> View the map
+              </Link>
+              <Link href="/explore/bounties" className="btn btn-secondary !py-3 text-sm">
+                <Target size={16} /> Active bounties
+              </Link>
+            </div>
+          </div>
           {DEV_LOGIN_UI && <DevButton onDone={finish} />}
         </div>
       </section>
@@ -76,21 +88,44 @@ function WalletButtons({ onDone }: { onDone: () => void }) {
     }
   };
 
+  // No wallet injected into this browser: on a phone, hand the page to a
+  // wallet app's built-in browser; on desktop, point at the extensions.
   if (wallets.length === 0) {
+    const mobile = isMobile();
     return (
       <div className="space-y-2">
-        <button className="btn btn-primary w-full" onClick={() => window.location.assign(phantomBrowseLink(window.location.href))}>
-          <Smartphone size={18} /> Open in Phantom
-        </button>
-        <a href="https://phantom.app/download" target="_blank" rel="noreferrer" className="block text-center text-xs text-muted">
-          No wallet installed? Get Phantom <ExternalLink className="inline" size={11} />
-        </a>
+        <p className="text-center text-xs text-muted">
+          {mobile ? "Open Drops inside your wallet app to sign in" : "No Solana wallet extension detected. Install one, then reload."}
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          {WALLET_APPS.map((w) =>
+            mobile ? (
+              <button key={w.name} className="btn btn-ghost flex-col !gap-1 !py-3 text-sm" onClick={() => window.location.assign(w.browse(window.location.href))}>
+                <span className="grid h-8 w-8 place-items-center rounded-full text-white" style={{ background: w.color }}>
+                  <Smartphone size={16} />
+                </span>
+                {w.name}
+              </button>
+            ) : (
+              <a key={w.name} href={w.install} target="_blank" rel="noreferrer" className="btn btn-ghost flex-col !gap-1 !py-3 text-sm">
+                <span className="grid h-8 w-8 place-items-center rounded-full text-white" style={{ background: w.color }}>
+                  <ExternalLink size={14} />
+                </span>
+                {w.name}
+              </a>
+            ),
+          )}
+        </div>
+        <p className="text-center text-[11px] text-faint">Any Solana wallet works: Phantom, Solflare, Backpack, Glow, Coinbase Wallet and more.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
+      <p className="text-center text-xs text-muted">
+        {wallets.length === 1 ? "Wallet detected" : `${wallets.length} wallets detected`}
+      </p>
       {wallets.map((w) => (
         <button key={w.name} className="btn btn-primary w-full" disabled={busy !== null} onClick={() => go(w)}>
           <Image src={w.icon} alt="" width={20} height={20} className="rounded-md" unoptimized />
