@@ -74,11 +74,14 @@ export async function verifyDeposit(opts: {
   const treasury = treasuryAddress();
   if (!treasury) return { ok: false, reason: "Treasury not configured" };
   const conn = connection();
-  const tx = await conn.getParsedTransaction(opts.signature, {
-    commitment: "confirmed",
-    maxSupportedTransactionVersion: 0,
-  });
-  if (!tx || tx.meta?.err) return { ok: false, reason: "Transaction not found or failed" };
+  // A just-sent transaction can take a few seconds to show up on the RPC; retry briefly.
+  let tx: Awaited<ReturnType<typeof conn.getParsedTransaction>> = null;
+  for (let attempt = 0; attempt < 5 && !tx; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
+    tx = await conn.getParsedTransaction(opts.signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+  }
+  if (!tx) return { ok: false, reason: `Transaction not found on ${CLUSTER} yet. If your wallet shows it as sent, wait a moment and tap "Check again".` };
+  if (tx.meta?.err) return { ok: false, reason: `Transaction failed on-chain (${JSON.stringify(tx.meta.err)})` };
 
   let memoOk = false;
   let received = 0;
