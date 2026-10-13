@@ -55,6 +55,8 @@ type Props = {
   className?: string;
   /** Re-centre the map on `center` whenever this value changes. */
   followKey?: string | number;
+  /** Fly somewhere else (search result); `key` must change to trigger. */
+  flyTo?: { lat: number; lng: number; zoom?: number; key: number } | null;
   attribution?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
 };
 
@@ -99,6 +101,7 @@ export function DropMap({
   interactive = true,
   className = "",
   followKey,
+  flyTo,
   attribution = "bottom-right",
 }: Props) {
   const el = useRef<HTMLDivElement>(null);
@@ -306,6 +309,12 @@ export function DropMap({
       );
     }
   }
+
+  // Fly to a searched place.
+  useEffect(() => {
+    if (!flyTo || !map.current) return;
+    map.current.easeTo({ center: [flyTo.lng, flyTo.lat], zoom: flyTo.zoom ?? 15, duration: 900 });
+  }, [flyTo?.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Follow centre when asked.
   useEffect(() => {

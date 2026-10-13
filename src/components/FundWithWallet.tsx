@@ -2,18 +2,12 @@
 
 import { useState } from "react";
 import { PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
-import type { WalletAccount } from "@wallet-standard/base";
 import bs58 from "bs58";
 import { Wallet } from "lucide-react";
 import { api } from "@/lib/client";
 import { formatSol } from "@/lib/geo";
 import { CLUSTER, MEMO_PROGRAM_ID, connection } from "@/lib/solana";
 import { useSolanaWallets } from "@/hooks/useSolanaWallets";
-
-type SignAndSend = {
-  signAndSendTransaction: (input: { account: WalletAccount; transaction: Uint8Array; chain: string }) => Promise<readonly { signature: Uint8Array }[]>;
-};
-type Connect = { connect: (opts?: { silent?: boolean }) => Promise<{ accounts: readonly WalletAccount[] }> };
 
 /**
  * Pays SOL from the signed-in wallet into escrow (system transfer + memo),
@@ -43,19 +37,16 @@ export function FundWithWallet({
     setBusy(true);
     setMsg(null);
     try {
-      // Find an installed wallet that holds the session's address.
-      let account: WalletAccount | null = null;
+      // Find the installed wallet that holds the session's address.
       let provider: (typeof wallets)[number] | null = null;
       for (const w of wallets) {
-        const { accounts } = await (w.features["standard:connect"] as Connect).connect().catch(() => ({ accounts: [] as WalletAccount[] }));
-        const hit = accounts.find((a) => a.address === wallet);
-        if (hit) {
-          account = hit;
+        const accounts = await w.connect().catch(() => [] as string[]);
+        if (accounts.includes(wallet)) {
           provider = w;
           break;
         }
       }
-      if (!account || !provider) throw new Error(`Connect the wallet ${wallet.slice(0, 4)}…${wallet.slice(-4)} to pay`);
+      if (!provider) throw new Error(`Connect the wallet ${wallet.slice(0, 4)}…${wallet.slice(-4)} to pay`);
 
       const conn = connection();
       const from = new PublicKey(wallet);
@@ -66,12 +57,12 @@ export function FundWithWallet({
       tx.feePayer = from;
       tx.recentBlockhash = (await conn.getLatestBlockhash("confirmed")).blockhash;
 
-      const [out] = await (provider.features["solana:signAndSendTransaction"] as SignAndSend).signAndSendTransaction({
-        account,
-        transaction: tx.serialize({ requireAllSignatures: false, verifySignatures: false }),
-        chain: CLUSTER === "mainnet-beta" ? "solana:mainnet" : "solana:devnet",
-      });
-      const sig = bs58.encode(out.signature);
+      const sigBytes = await provider.signAndSendTransaction(
+        wallet,
+        tx.serialize({ requireAllSignatures: false, verifySignatures: false }),
+        CLUSTER === "mainnet-beta" ? "solana:mainnet" : "solana:devnet",
+      );
+      const sig = bs58.encode(sigBytes);
       setMsg("Sent. Waiting for confirmation…");
       await conn.confirmTransaction(sig, "confirmed").catch(() => {});
       await api(fundPath, { method: "POST", json: { signature: sig } });

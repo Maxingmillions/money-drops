@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Plus, Crosshair, Sparkles, Eye, ShieldCheck, Compass, MapPin, Search } from "lucide-react";
 import { DropMap, type MapHunt, type Viewport } from "./DropMap";
+import { LocationSearch } from "./LocationSearch";
 import { Coin } from "./Coin";
 import { api } from "@/lib/client";
 import { formatDistance, formatSol, walkMinutes, type LatLng } from "@/lib/geo";
@@ -23,6 +24,8 @@ export function MapScreen({ guest = false }: { guest?: boolean }) {
   const [selectedId, setSelectedId] = useState<string | null>(params.get("drop"));
   const [simMode, setSimMode] = useState(false);
   const [followKey, setFollowKey] = useState(0);
+  const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; zoom?: number; key: number } | null>(null);
+  const jumpTo = (p: { lat: number; lng: number }) => setFlyTo({ ...p, zoom: 14, key: Date.now() });
 
   const [viewport, setViewport] = useState<Viewport | null>(null);
   const [hunts, setHunts] = useState<MapHunt[]>([]);
@@ -100,6 +103,9 @@ export function MapScreen({ guest = false }: { guest?: boolean }) {
           <h1 className="text-xl font-bold">{guest ? "Live drops" : "Hunt"}</h1>
           <p className="text-sm text-muted">{summary}</p>
           {error && !position && <p className="mt-2 text-xs text-danger">{error}</p>}
+          <div className="mt-3">
+            <LocationSearch near={position} placeholder="Search a city, address or place" onPick={jumpTo} />
+          </div>
         </div>
         {selected ? (
           <div className="p-5">
@@ -163,6 +169,7 @@ export function MapScreen({ guest = false }: { guest?: boolean }) {
           onViewport={setViewport}
           bigAmountCents={bigAmount}
           followKey={followKey}
+          flyTo={flyTo}
           onTap={(p) => {
             if (simMode) setSimulated(p);
             else setSelectedId(null);
@@ -192,8 +199,13 @@ export function MapScreen({ guest = false }: { guest?: boolean }) {
           )}
         </div>
 
+        {/* Mobile search */}
+        <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top)+64px)] z-10 lg:hidden">
+          <LocationSearch near={position} placeholder="Search a city, address or place" onPick={jumpTo} />
+        </div>
+
         {/* Controls */}
-        <div className="absolute right-4 top-24 z-10 flex flex-col gap-2 lg:top-4">
+        <div className="absolute right-4 top-[calc(env(safe-area-inset-top)+116px)] z-10 flex flex-col gap-2 lg:top-4">
           <button className="icon-btn" aria-label="Centre on me" title="Centre on me" onClick={() => setFollowKey((k) => k + 1)}>
             <Crosshair size={18} />
           </button>
@@ -212,12 +224,12 @@ export function MapScreen({ guest = false }: { guest?: boolean }) {
         </div>
 
         {simMode && (
-          <div className="absolute left-1/2 top-24 z-10 -translate-x-1/2 rounded-full bg-fg px-3 py-1.5 text-xs font-semibold text-white lg:top-4">
+          <div className="absolute left-1/2 top-[calc(env(safe-area-inset-top)+116px)] z-10 -translate-x-1/2 rounded-full bg-fg px-3 py-1.5 text-xs font-semibold text-white lg:top-4">
             Tap the map to move yourself
           </div>
         )}
         {error && !position && (
-          <div className="absolute left-4 right-4 top-24 z-10 rounded-2xl bg-white/90 p-3 text-center text-xs text-muted shadow lg:hidden">
+          <div className="absolute left-4 right-4 top-[calc(env(safe-area-inset-top)+116px)] z-10 rounded-2xl bg-white/90 p-3 text-center text-xs text-muted shadow lg:hidden">
             {error}
           </div>
         )}

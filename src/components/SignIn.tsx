@@ -69,17 +69,38 @@ export function SignIn() {
   );
 }
 
-/** Native Sign-In With Solana for installed wallets (Phantom, Solflare, Backpack...). */
+/** Native Sign-In With Solana: pick a wallet, then an account if it has several. */
 function WalletButtons({ onDone }: { onDone: () => void }) {
-  const { wallets, signIn } = useSolanaWallets();
+  const { wallets, connect, signIn } = useSolanaWallets();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [choice, setChoice] = useState<{ wallet: SolanaWallet; accounts: string[] } | null>(null);
 
-  const go = async (w: SolanaWallet) => {
-    setBusy(w.name);
+  const pick = async (w: SolanaWallet) => {
+    setBusy(w.id);
     setError(null);
     try {
-      await signIn(w);
+      const accounts = await connect(w);
+      if (accounts.length === 0) throw new Error("No account returned by the wallet");
+      if (accounts.length === 1) {
+        await signIn(w, accounts[0]);
+        onDone();
+      } else {
+        setChoice({ wallet: w, accounts });
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Sign-in failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const signInWith = async (address: string) => {
+    if (!choice) return;
+    setBusy(address);
+    setError(null);
+    try {
+      await signIn(choice.wallet, address);
       onDone();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Sign-in failed");
@@ -121,17 +142,41 @@ function WalletButtons({ onDone }: { onDone: () => void }) {
     );
   }
 
+  if (choice) {
+    return (
+      <div className="card pop-in p-4">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold">Which {choice.wallet.name} account?</span>
+          <button className="text-xs text-muted" onClick={() => setChoice(null)}>
+            Back
+          </button>
+        </div>
+        <div className="mt-2 space-y-1.5">
+          {choice.accounts.map((a) => (
+            <button key={a} className="btn btn-secondary w-full justify-between !py-2.5 font-mono text-xs" disabled={busy !== null} onClick={() => signInWith(a)}>
+              <span>{a.slice(0, 6)}…{a.slice(-6)}</span>
+              <span className="text-faint">{busy === a ? "Signing…" : "Use"}</span>
+            </button>
+          ))}
+        </div>
+        {error && <p className="mt-2 text-center text-sm text-danger">{error}</p>}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       <p className="text-center text-xs text-muted">
-        {wallets.length === 1 ? "Wallet detected" : `${wallets.length} wallets detected`}
+        {wallets.length === 1 ? "Wallet detected · pick it to sign in" : `${wallets.length} wallets detected · pick one`}
       </p>
-      {wallets.map((w) => (
-        <button key={w.name} className="btn btn-primary w-full" disabled={busy !== null} onClick={() => go(w)}>
-          <Image src={w.icon} alt="" width={20} height={20} className="rounded-md" unoptimized />
-          {busy === w.name ? "Check your wallet…" : `Continue with ${w.name}`}
-        </button>
-      ))}
+      <div className={wallets.length > 1 ? "grid grid-cols-2 gap-2" : "space-y-2"}>
+        {wallets.map((w) => (
+          <button key={w.id} className="btn btn-primary w-full" disabled={busy !== null} onClick={() => pick(w)}>
+            {w.icon ? <Image src={w.icon} alt="" width={20} height={20} className="rounded-md" unoptimized /> : <Smartphone size={18} />}
+            {busy === w.id ? "Check your wallet…" : wallets.length > 1 ? w.name : `Continue with ${w.name}`}
+          </button>
+        ))}
+      </div>
       {error && <p className="text-center text-sm text-danger">{error}</p>}
     </div>
   );

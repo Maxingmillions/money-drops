@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "./db";
 import { scatterDrops, type LatLng } from "./geo";
+import { METROS, pickMetro } from "./metros";
 
 /** Platform fee in basis points on every funded hunt / bounty (500 = 5%). */
 export const FEE_BPS = Number(process.env.FEE_BPS ?? 500);
@@ -42,8 +43,16 @@ export async function collectFee(opts: { lamports: number; source: string; onCha
   return { fee, toPool };
 }
 
-/** Where people are: recent user positions, falling back to live hunt centres. */
+/**
+ * Where to drop: half the time a major metro (weighted by population), the
+ * other half somewhere people are active right now (recent positions, then
+ * live hunt centres). Either way the drop lands within a few miles.
+ */
 async function populatedAreas(): Promise<{ center: LatLng; name: string | null }[]> {
+  const metro = pickMetro();
+  const metroArea = { center: { lat: metro.lat, lng: metro.lng }, name: metro.name };
+  if (Math.random() < 0.5) return [metroArea];
+
   const since = new Date(Date.now() - 48 * 3_600_000);
   const users = await prisma.user.findMany({
     where: { lastSeenAt: { gte: since }, lastLat: { not: null }, lastLng: { not: null }, loginMethod: { not: "system" } },
@@ -57,7 +66,18 @@ async function populatedAreas(): Promise<{ center: LatLng; name: string | null }
     select: { centerLat: true, centerLng: true, areaName: true },
     take: 200,
   });
-  return hunts.map((h) => ({ center: { lat: h.centerLat, lng: h.centerLng }, name: h.areaName }));
+  if (hunts.length > 0) return hunts.map((h) => ({ center: { lat: h.centerLat, lng: h.centerLng }, name: h.areaName }));
+  return [metroArea];
+}
+
+function nearestMetroName(p: LatLng): string | null {
+  let best: { name: string; d: number } | null = null;
+  for (const m of METROS) {
+    const d = (m.lat - p.lat) ** 2 + (m.lng - p.lng) ** 2;
+    if (!best || d < best.d) best = { name: m.name, d };
+  }
+  // Only label it when it's actually close (~1.5 degrees).
+  return best && best.d < 2.25 ? `near ${best.name}` : null;
 }
 
 async function systemUser() {
@@ -96,6 +116,7 @@ export async function runPoolDrop() {
     return { dropped: 0, reason: "nobody around yet" };
   }
   const area = areas[Math.floor(Math.random() * areas.length)];
+  if (!area.name) area.name = nearestMetroName(area.center);
   const count = Math.max(1, Math.min(MAX_DROPS_PER_RUN, Math.floor(budget / TARGET_DROP)));
   const per = Math.floor(budget / count);
   const total = per * count;
