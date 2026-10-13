@@ -1,0 +1,106 @@
+// Money Drops data model.
+//
+// Money amounts are stored as integer USDC cents (1 USDC = 100 cents).
+// On-chain USDC has 6 decimals, so cents * 10_000 = base units.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  /// Solana public key (base58) that receives payouts. Either an external
+  /// wallet (Phantom, Solflare...) or the Privy embedded wallet.
+  wallet    String   @unique
+  /// Privy DID (did:privy:...). Null for dev-login users.
+  privyId   String?  @unique
+  email     String?
+  /// How the user first signed in: wallet | google | apple | email | dev ...
+  loginMethod String?
+  handle    String?  @unique
+  createdAt DateTime @default(now())
+
+  campaigns Campaign[]
+  claims    Claim[]
+}
+
+/// A drop campaign: one "Hide money" action that scatters many drops.
+model Campaign {
+  id        String  @id @default(cuid())
+  creatorId String
+  creator   User    @relation(fields: [creatorId], references: [id])
+  title     String
+  /// PROXIMITY: always-on until all drops are claimed.
+  /// EVENT: drops are only visible and claimable inside the time window.
+  kind      String  @default("PROXIMITY")
+  status    String  @default("DRAFT") // DRAFT | ACTIVE | ENDED | REFUNDED
+
+  totalCents     Int
+  perPersonLimit Int @default(1)
+  /// Exact drop location is revealed once a hunter is within this many metres.
+  revealRadiusM  Int @default(30)
+  /// A claim is accepted when the hunter is within this many metres.
+  claimRadiusM   Int @default(15)
+
+  centerLat Float
+  centerLng Float
+  radiusM   Int
+  areaName  String?
+
+  startsAt DateTime?
+  endsAt   DateTime?
+
+  /// Custodial escrow (v1): USDC is sent to the treasury wallet with the
+  /// campaign id in the memo. fundingTxSig is the verified deposit.
+  fundingTxSig String? @unique
+  fundedAt     DateTime?
+  refundTxSig  String?
+
+  createdAt DateTime @default(now())
+
+  drops  Drop[]
+  claims Claim[]
+}
+
+model Drop {
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  amountCents Int
+  lat        Float
+  lng        Float
+  status     String   @default("HIDDEN") // HIDDEN | CLAIMED | RETURNED
+  claim      Claim?
+  createdAt  DateTime @default(now())
+
+  @@index([campaignId, status])
+  @@index([lat, lng])
+}
+
+model Claim {
+  id         String   @id @default(cuid())
+  dropId     String   @unique
+  drop       Drop     @relation(fields: [dropId], references: [id])
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  amountCents Int
+  lat        Float
+  lng        Float
+  distanceM  Float
+  /// PENDING | PAID | FAILED
+  payoutStatus String  @default("PENDING")
+  payoutTxSig  String?
+  payoutError  String?
+  createdAt  DateTime @default(now())
+
+  @@unique([campaignId, userId, dropId])
+  @@index([userId])
+}
+

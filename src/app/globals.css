@@ -1,26 +1,272 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --bg: #eef1f6;
+  --bg-elev: #ffffff;
+  --bg-soft: #f4f6fa;
+  --fg: #0f172a;
+  --fg-muted: #64748b;
+  --fg-faint: #94a3b8;
+  --line: #e2e8f0;
+  --accent: #2f6fed;
+  --accent-strong: #1d5ce0;
+  --accent-soft: #e6eeff;
+  --success: #16a34a;
+  --success-soft: #dcfce7;
+  --danger: #dc2626;
+  --coin-1: #5b9cff;
+  --coin-2: #2b64d9;
+  --radius: 22px;
+  --shadow: 0 10px 30px -12px rgb(15 23 42 / 0.25);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-elev: var(--bg-elev);
+  --color-soft: var(--bg-soft);
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-faint: var(--fg-faint);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+@layer components {
+  .card {
+    background: var(--bg-elev);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+  .row-list {
+    background: var(--bg-soft);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+  .row-list > * + * {
+    border-top: 1px solid var(--line);
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    padding: 0.95rem 1.25rem;
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1;
+    transition: transform 0.08s ease, background-color 0.15s ease, opacity 0.15s ease;
+    user-select: none;
+  }
+  .btn:active {
+    transform: scale(0.98);
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 8px 20px -8px rgb(47 111 237 / 0.7);
+  }
+  .btn-primary:hover {
+    background: var(--accent-strong);
+  }
+  .btn-secondary {
+    background: var(--bg-soft);
+    color: var(--fg);
+  }
+  .btn-ghost {
+    background: var(--bg-elev);
+    color: var(--fg);
+    box-shadow: var(--shadow);
+  }
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    background: var(--bg-elev);
+    box-shadow: var(--shadow);
+    color: var(--fg);
+  }
+  .input {
+    width: 100%;
+    background: var(--bg-soft);
+    border-radius: 14px;
+    padding: 0.8rem 0.9rem;
+    font-size: 1rem;
+    outline: none;
+    border: 1px solid transparent;
+  }
+  .input:focus {
+    border-color: var(--accent);
+    background: #fff;
+  }
+  .label {
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+    font-weight: 500;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+}
+
+/* App shell: full-bleed on phones, a phone-sized column on desktop. */
+.shell {
+  min-height: 100dvh;
+  margin: 0 auto;
+  width: 100%;
+  position: relative;
+}
+@media (min-width: 768px) {
+  .shell {
+    max-width: 480px;
+    min-height: 100dvh;
+    box-shadow: 0 0 0 1px var(--line), 0 30px 80px -40px rgb(15 23 42 / 0.5);
+    background: var(--bg);
+  }
+}
+.safe-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
+}
+
+/* Map markers */
+.md-marker {
+  position: relative;
+  cursor: pointer;
+}
+.md-marker .coin {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, var(--coin-1), var(--coin-2));
+  box-shadow: 0 4px 10px -3px rgb(43 100 217 / 0.7), inset 0 0 0 2px rgb(255 255 255 / 0.85);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  transition: transform 0.15s ease;
+}
+.md-marker.big .coin {
+  width: 40px;
+  height: 40px;
+  font-size: 17px;
+}
+.md-marker.selected .coin,
+.md-marker:hover .coin {
+  transform: scale(1.15);
+}
+.md-marker .tag {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translate(-50%, 2px);
+  background: #0f172a;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.md-marker .halo {
+  position: absolute;
+  inset: -22px;
+  border-radius: 999px;
+  background: rgb(47 111 237 / 0.14);
+  border: 1px solid rgb(47 111 237 / 0.35);
+  pointer-events: none;
+}
+.md-me {
+  pointer-events: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px #fff, 0 0 0 10px rgb(47 111 237 / 0.2);
+}
+.md-cluster {
+  background: #fff;
+  border-radius: 999px;
+  padding: 4px 10px 4px 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.md-cluster .coin {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, var(--coin-1), var(--coin-2));
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+.maplibregl-ctrl-attrib {
+  font-size: 10px;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-6deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(6deg);
+  }
+}
+.float {
+  animation: float 3.2s ease-in-out infinite;
+}
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+.pulse-ring {
+  animation: pulse-ring 1.6s ease-out infinite;
 }
