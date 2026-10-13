@@ -24,10 +24,13 @@ export const POST = handler(async (req) => {
   } catch {
     throw new ApiError(400, "Invalid wallet address");
   }
+  // The mod shortcut is for local testing only; on a deployed site mods
+  // come from ADMIN_WALLETS or a database role change.
+  const makeMod = Boolean(body.mod) && process.env.NODE_ENV !== "production";
   const user = await prisma.user.upsert({
     where: { wallet },
-    update: body.mod ? { role: "MOD" } : {},
-    create: { wallet, loginMethod: "dev", role: body.mod ? "MOD" : "USER" },
+    update: makeMod ? { role: "MOD" } : {},
+    create: { wallet, loginMethod: "dev", role: makeMod ? "MOD" : "USER" },
   });
   await syncRole(user.id, user.wallet);
   await createSession({ userId: user.id, wallet: user.wallet });
