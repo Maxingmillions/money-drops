@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SolAmount } from "./Sol";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Plus, Crosshair, Sparkles, Eye, ShieldCheck, Compass, MapPin, Search } from "lucide-react";
+import { ChevronLeft, Plus, LocateFixed, Sparkles, Eye, ShieldCheck, Compass, MapPin, Search } from "lucide-react";
 import { DropMap, type MapHunt, type Viewport } from "./DropMap";
 import { LocationSearch } from "./LocationSearch";
 import { Coin } from "./Coin";
@@ -25,6 +25,7 @@ export function MapScreen({ guest = false }: { guest?: boolean }) {
   const [selectedId, setSelectedId] = useState<string | null>(params.get("drop"));
   const [simMode, setSimMode] = useState(false);
   const [followKey, setFollowKey] = useState(0);
+  const [locateNudge, setLocateNudge] = useState(false);
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; zoom?: number; key: number } | null>(null);
   const jumpTo = (p: { lat: number; lng: number }) => setFlyTo({ ...p, zoom: 14, key: Date.now() });
 
@@ -207,9 +208,6 @@ export function MapScreen({ guest = false }: { guest?: boolean }) {
 
         {/* Controls */}
         <div className="absolute right-4 top-[calc(env(safe-area-inset-top)+134px)] z-10 flex flex-col gap-2 lg:top-16">
-          <button className="icon-btn" aria-label="Centre on me" title="Centre on me" onClick={() => setFollowKey((k) => k + 1)}>
-            <Crosshair size={18} />
-          </button>
           {DEV_LOCATION && (
             <button
               className={`icon-btn ${simMode ? "!bg-accent !text-white" : ""}`}
@@ -223,6 +221,30 @@ export function MapScreen({ guest = false }: { guest?: boolean }) {
             </button>
           )}
         </div>
+
+        <button
+          className={`absolute bottom-[var(--loc-bottom)] right-4 z-20 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-semibold shadow-xl transition lg:bottom-auto lg:top-16 ${position ? "bg-elev text-accent" : "bg-elev text-muted"}`}
+          style={{ "--loc-bottom": `calc(env(safe-area-inset-bottom) + ${selected ? 300 : 140}px)` } as React.CSSProperties}
+          aria-label="Snap to my location"
+          title="Snap to my location"
+          onClick={() => {
+            if (position) {
+              setFlyTo({ lat: position.lat, lng: position.lng, zoom: 16, key: Date.now() });
+              setFollowKey((k) => k + 1);
+            } else {
+              setLocateNudge(true);
+              setTimeout(() => setLocateNudge(false), 2500);
+            }
+          }}
+        >
+          <LocateFixed size={18} className={position ? "" : "animate-pulse"} />
+          <span className="hidden sm:inline">My location</span>
+        </button>
+        {locateNudge && (
+          <div className="absolute left-1/2 top-[calc(env(safe-area-inset-top)+134px)] z-20 -translate-x-1/2 rounded-full bg-fg px-3 py-1.5 text-xs font-semibold text-white lg:top-16">
+            {error ?? "Waiting for your location…"}
+          </div>
+        )}
 
         {simMode && (
           <div className="absolute left-1/2 top-[calc(env(safe-area-inset-top)+134px)] z-10 -translate-x-1/2 rounded-full bg-fg px-3 py-1.5 text-xs font-semibold text-white lg:top-4">
