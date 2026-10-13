@@ -1,40 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useIdentityToken, useLogin, usePrivy } from "@privy-io/react-auth";
 import { useWallets } from "@privy-io/react-auth/solana";
-import { Wallet, Mail, Sparkles, FlaskConical } from "lucide-react";
+import { Mail, Sparkles, FlaskConical, Smartphone, ExternalLink } from "lucide-react";
 import { SolCoin } from "./SolCoin";
+import { DropsTokenCard } from "./DropsToken";
 import { PRIVY_APP_ID } from "./Providers";
 import { api, ClientError } from "@/lib/client";
+import { phantomBrowseLink, useSolanaWallets, type SolanaWallet } from "@/hooks/useSolanaWallets";
 
 const DEV_LOGIN_UI = process.env.NEXT_PUBLIC_DEV_LOGIN === "true" || process.env.NODE_ENV !== "production";
-
-export function SignIn() {
-  return PRIVY_APP_ID ? <PrivySignIn /> : <DevOnlySignIn />;
-}
-
-function Hero() {
-  return (
-    <div className="flex flex-col items-center text-center">
-      <SolCoin size={190} />
-      <h1 className="mt-8 text-[40px] font-bold tracking-tight">Money Drops</h1>
-      <p className="mt-2 max-w-[300px] text-[17px] text-muted">
-        Money becomes a real-world treasure hunt.
-      </p>
-    </div>
-  );
-}
-
-function Frame({ children }: { children: React.ReactNode }) {
-  return (
-    <main className="shell flex flex-col justify-between px-6 pt-[18vh] pb-10">
-      <Hero />
-      <div className="mx-auto w-full max-w-[380px]">{children}</div>
-    </main>
-  );
-}
 
 function useFinishSignIn() {
   const router = useRouter();
@@ -43,8 +21,94 @@ function useFinishSignIn() {
   return useCallback(() => router.replace(next), [router, next]);
 }
 
-function PrivySignIn() {
+export function SignIn() {
   const finish = useFinishSignIn();
+  return (
+    <main className="min-h-dvh lg:grid lg:grid-cols-2">
+      {/* Brand side */}
+      <section className="flex flex-col items-center px-6 pt-[calc(env(safe-area-inset-top)+28px)] lg:justify-center lg:border-r lg:border-line lg:bg-elev">
+        <div className="w-full max-w-[380px]">
+          <DropsTokenCard external />
+        </div>
+        <div className="mt-6 lg:mt-10">
+          <SolCoin size={200} />
+        </div>
+        <h1 className="mt-4 text-[40px] font-bold tracking-tight">Drops</h1>
+        <p className="mt-1 max-w-[300px] text-center text-[17px] text-muted">
+          Money becomes a real-world treasure hunt. Hide USDC on Solana; strangers find it.
+        </p>
+      </section>
+
+      {/* Sign-in side */}
+      <section className="flex flex-col items-center px-6 pb-10 pt-8 lg:justify-center">
+        <div className="w-full max-w-[380px] space-y-3">
+          <h2 className="hidden text-2xl font-bold lg:block">Sign in</h2>
+          <WalletButtons onDone={finish} />
+          {PRIVY_APP_ID ? (
+            <PrivySocial onDone={finish} />
+          ) : (
+            <button className="btn btn-ghost w-full opacity-60" disabled title="Needs a Privy app id">
+              <Mail size={18} /> Google, Apple or email · coming soon
+            </button>
+          )}
+          <p className="px-4 text-center text-xs text-faint">
+            <Sparkles className="mr-1 inline" size={12} />
+            No wallet? Google or Apple sign-in creates a Solana wallet for you.
+          </p>
+          {DEV_LOGIN_UI && <DevButton onDone={finish} />}
+        </div>
+      </section>
+    </main>
+  );
+}
+
+/** Native Sign-In With Solana for installed wallets (Phantom, Solflare, Backpack...). */
+function WalletButtons({ onDone }: { onDone: () => void }) {
+  const { wallets, signIn } = useSolanaWallets();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const go = async (w: SolanaWallet) => {
+    setBusy(w.name);
+    setError(null);
+    try {
+      await signIn(w);
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Sign-in failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (wallets.length === 0) {
+    return (
+      <div className="space-y-2">
+        <button className="btn btn-primary w-full" onClick={() => window.location.assign(phantomBrowseLink(window.location.href))}>
+          <Smartphone size={18} /> Open in Phantom
+        </button>
+        <a href="https://phantom.app/download" target="_blank" rel="noreferrer" className="block text-center text-xs text-muted">
+          No wallet installed? Get Phantom <ExternalLink className="inline" size={11} />
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {wallets.map((w) => (
+        <button key={w.name} className="btn btn-primary w-full" disabled={busy !== null} onClick={() => go(w)}>
+          <Image src={w.icon} alt="" width={20} height={20} className="rounded-md" unoptimized />
+          {busy === w.name ? "Check your wallet…" : `Continue with ${w.name}`}
+        </button>
+      ))}
+      {error && <p className="text-center text-sm text-danger">{error}</p>}
+    </div>
+  );
+}
+
+/** Google / Apple / email via Privy (only rendered when an app id is configured). */
+function PrivySocial({ onDone }: { onDone: () => void }) {
   const { ready, authenticated, logout } = usePrivy();
   const { identityToken } = useIdentityToken();
   const { ready: walletsReady, wallets } = useWallets();
@@ -52,7 +116,6 @@ function PrivySignIn() {
   const [error, setError] = useState<string | null>(null);
   const attempts = useRef(0);
   const [loginCompleted, setLoginCompleted] = useState(false);
-  // Also link when already logged into Privy from a previous visit.
   const wantsSession = loginCompleted || (ready && authenticated);
 
   const { login } = useLogin({
@@ -62,8 +125,6 @@ function PrivySignIn() {
     },
   });
 
-  // Once Privy has authenticated the user and issued an identity token that
-  // includes their Solana wallet, exchange it for a Money Drops session.
   useEffect(() => {
     if (!wantsSession || !authenticated || !identityToken || !walletsReady) return;
     let cancelled = false;
@@ -71,14 +132,10 @@ function PrivySignIn() {
       setStatus("linking");
       try {
         const preferred = wallets.find((w) => w.standardWallet.name !== "Privy") ?? wallets[0];
-        await api("/api/auth/privy", {
-          method: "POST",
-          json: { identityToken, wallet: preferred?.address },
-        });
-        if (!cancelled) finish();
+        await api("/api/auth/privy", { method: "POST", json: { identityToken, wallet: preferred?.address } });
+        if (!cancelled) onDone();
       } catch (e) {
         if (cancelled) return;
-        // Embedded wallet may still be provisioning: retry a few times.
         if (e instanceof ClientError && e.status === 409 && attempts.current < 8) {
           attempts.current += 1;
           setTimeout(run, 1500);
@@ -92,62 +149,30 @@ function PrivySignIn() {
     return () => {
       cancelled = true;
     };
-  }, [wantsSession, authenticated, identityToken, walletsReady, wallets, finish]);
+  }, [wantsSession, authenticated, identityToken, walletsReady, wallets, onDone]);
 
-  return (
-    <Frame>
-      {status === "linking" ? (
-        <div className="card p-5 text-center">
-          <div className="text-lg font-semibold">Setting up your wallet…</div>
-          <p className="mt-1 text-sm text-muted">Creating a Solana wallet if you don&apos;t have one.</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <button className="btn btn-primary w-full" disabled={!ready} onClick={() => login()}>
-            <Wallet size={18} /> Continue with wallet
-          </button>
-          <button
-            className="btn btn-ghost w-full"
-            disabled={!ready}
-            onClick={() => login({ loginMethods: ["google", "apple", "email"] })}
-          >
-            <Mail size={18} /> Google, Apple or email
-          </button>
-          <p className="px-4 text-center text-xs text-faint">
-            <Sparkles className="mr-1 inline" size={12} />
-            No wallet? One is created for you automatically.
-          </p>
-          {DEV_LOGIN_UI && <DevButton onDone={finish} />}
-          {error && (
-            <p className="text-center text-sm text-danger">
-              {error}{" "}
-              <button className="underline" onClick={() => { setError(null); setStatus("idle"); logout(); }}>
-                Reset
-              </button>
-            </p>
-          )}
-        </div>
-      )}
-    </Frame>
-  );
-}
-
-function DevOnlySignIn() {
-  const finish = useFinishSignIn();
-  return (
-    <Frame>
-      <div className="space-y-3">
-        <div className="card p-4 text-sm text-muted">
-          Wallet, Google and Apple sign-in need a Privy app id. Add{" "}
-          <code className="font-mono text-xs">NEXT_PUBLIC_PRIVY_APP_ID</code> to the environment to enable them.
-        </div>
-        {DEV_LOGIN_UI ? (
-          <DevButton onDone={finish} />
-        ) : (
-          <p className="text-center text-xs text-faint">Sign-in isn&apos;t configured on this deployment yet.</p>
-        )}
+  if (status === "linking") {
+    return (
+      <div className="card p-4 text-center text-sm">
+        <div className="font-semibold">Setting up your wallet…</div>
+        <div className="text-muted">Creating a Solana wallet if you don&apos;t have one.</div>
       </div>
-    </Frame>
+    );
+  }
+  return (
+    <div>
+      <button className="btn btn-ghost w-full" disabled={!ready} onClick={() => login({ loginMethods: ["google", "apple", "email"] })}>
+        <Mail size={18} /> Google, Apple or email
+      </button>
+      {error && (
+        <p className="mt-2 text-center text-sm text-danger">
+          {error}{" "}
+          <button className="underline" onClick={() => { setError(null); setStatus("idle"); logout(); }}>
+            Reset
+          </button>
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -166,7 +191,7 @@ function DevButton({ onDone }: { onDone: () => void }) {
             await api("/api/auth/dev", { method: "POST", json: {} });
             onDone();
           } catch (e) {
-            setError(e instanceof Error ? e.message : "Dev login failed");
+            setError(e instanceof Error ? e.message : "Test login failed");
           } finally {
             setBusy(false);
           }

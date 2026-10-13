@@ -47,7 +47,6 @@ export function HuntScreen({ dropId }: { dropId: string }) {
   }, [dropId, position?.lat, position?.lng]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const distance = drop && Number.isFinite(drop.distanceM) ? drop.distanceM : null;
-
   const bearing = drop && position ? bearingDeg(position, drop) : null;
   const relative = bearing != null && heading != null ? ((bearing - heading + 540) % 360) - 180 : null;
   const hint =
@@ -60,14 +59,14 @@ export function HuntScreen({ dropId }: { dropId: string }) {
         : Math.abs(relative) > 150
           ? "It's behind you"
           : relative < 0
-            ? `A little to your left`
-            : `A little to your right`;
+            ? "A little to your left"
+            : "A little to your right";
 
   const canClaim = drop && distance != null && distance <= drop.campaign.claimRadiusM;
   const mapCenter = position ?? (drop ? { lat: drop.lat, lng: drop.lng } : { lat: 0, lng: 0 });
 
   return (
-    <main className="flex min-h-dvh flex-col px-5 pt-[calc(env(safe-area-inset-top)+16px)] pb-6">
+    <main className="page flex min-h-dvh flex-col px-5 pt-[calc(env(safe-area-inset-top)+16px)] pb-6 lg:min-h-0">
       <div className="flex items-center">
         <Link href="/map" className="icon-btn">
           <X size={18} />
@@ -81,81 +80,82 @@ export function HuntScreen({ dropId }: { dropId: string }) {
         <div className="w-10" />
       </div>
 
-      {/* Compass dial */}
-      <div className="mt-8 flex flex-col items-center">
-        <div className="relative h-[260px] w-[260px] rounded-full bg-elev shadow-[var(--shadow)]">
-          {/* ticks */}
-          {Array.from({ length: 60 }).map((_, i) => (
-            <div
-              key={i}
-              className="absolute left-1/2 top-1/2 h-[130px] w-px origin-top"
-              style={{ transform: `translate(-50%,0) rotate(${i * 6 + 180}deg)` }}
-            >
-              <div className={`mx-auto mt-2 w-px ${i % 15 === 0 ? "h-3 bg-fg" : "h-1.5 bg-line"}`} />
-            </div>
-          ))}
-          <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-faint">E</span>
-          <span className="absolute left-1/2 top-4 -translate-x-1/2 text-[10px] font-semibold text-faint">N</span>
-          {/* target coin on the rim */}
-          {relative != null && (
-            <div
-              className="absolute left-1/2 top-1/2 h-[220px] w-px origin-top"
-              style={{ transform: `translate(-50%,0) rotate(${relative + 180}deg)` }}
-            >
-              <div className="relative -ml-[18px] -mt-[18px] h-9 w-9" style={{ transform: `rotate(${-(relative + 180)}deg)` }}>
-                <div className="pulse-ring absolute inset-0 rounded-full bg-accent/30" />
-                <Coin size={36} />
+      <div className="flex flex-1 flex-col lg:mt-6 lg:grid lg:grid-cols-[420px_minmax(0,1fr)] lg:gap-8">
+        {/* Compass */}
+        <div className="mt-8 flex flex-col items-center lg:mt-0">
+          <div className="relative h-[260px] w-[260px] rounded-full bg-elev shadow-[var(--shadow)] lg:h-[320px] lg:w-[320px]">
+            {Array.from({ length: 60 }).map((_, i) => (
+              <div key={i} className="absolute left-1/2 top-1/2 h-1/2 w-px origin-top" style={{ transform: `translate(-50%,0) rotate(${i * 6 + 180}deg)` }}>
+                <div className={`mx-auto mt-2 w-px ${i % 15 === 0 ? "h-3 bg-fg" : "h-1.5 bg-line"}`} />
               </div>
+            ))}
+            <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-faint">E</span>
+            <span className="absolute left-1/2 top-4 -translate-x-1/2 text-[10px] font-semibold text-faint">N</span>
+            {relative != null && (
+              <div className="absolute left-1/2 top-1/2 h-[42%] w-px origin-top" style={{ transform: `translate(-50%,0) rotate(${relative + 180}deg)` }}>
+                <div className="relative -ml-[18px] -mt-[18px] h-9 w-9" style={{ transform: `rotate(${-(relative + 180)}deg)` }}>
+                  <div className="pulse-ring absolute inset-0 rounded-full bg-accent/30" />
+                  <Coin size={36} />
+                </div>
+              </div>
+            )}
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div className="text-[64px] font-bold leading-none tracking-tight">
+                {distance == null ? "—" : distance < 1000 ? Math.round(distance) : (distance / 1000).toFixed(1)}
+                <span className="ml-1 text-2xl text-muted">{distance != null && distance >= 1000 ? "km" : "m"}</span>
+              </div>
+              <div className="mt-2 text-sm font-semibold text-accent">
+                {trend === "warmer" ? "Getting warmer" : trend === "colder" ? "Getting colder" : "Keep moving"}
+              </div>
+              <div className="text-xs text-muted">{hint}</div>
             </div>
-          )}
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="text-[64px] font-bold leading-none tracking-tight">
-              {distance == null ? "—" : distance < 1000 ? Math.round(distance) : (distance / 1000).toFixed(1)}
-              <span className="ml-1 text-2xl text-muted">{distance != null && distance >= 1000 ? "km" : "m"}</span>
-            </div>
-            <div className="mt-2 text-sm font-semibold text-accent">
-              {trend === "warmer" ? "Getting warmer" : trend === "colder" ? "Getting colder" : "Keep moving"}
-            </div>
-            <div className="text-xs text-muted">{hint}</div>
           </div>
-        </div>
 
-        {needsPermission && (
-          <button className="btn btn-secondary mt-4 text-sm" onClick={request}>
-            <CompassIcon size={16} /> Enable compass
-          </button>
-        )}
-        {(error || loadError) && <p className="mt-3 text-center text-xs text-danger">{error ?? loadError}</p>}
-      </div>
+          {needsPermission && (
+            <button className="btn btn-secondary mt-4 text-sm" onClick={request}>
+              <CompassIcon size={16} /> Enable compass
+            </button>
+          )}
+          {(error || loadError) && <p className="mt-3 text-center text-xs text-danger">{error ?? loadError}</p>}
 
-      {/* Mini map */}
-      <div className="card mt-6 h-[190px] overflow-hidden">
-        {drop && (
-          <DropMap
-            center={mapCenter}
-            zoom={16}
-            drops={[{ id: drop.id, lat: drop.lat, lng: drop.lng, amountCents: drop.amountCents, exact: drop.exact }]}
-            me={position}
-            circle={drop.exact ? null : { center: { lat: drop.lat, lng: drop.lng }, radiusM: drop.campaign.revealRadiusM }}
-            interactive={false}
-            followKey={`${position?.lat ?? ""},${position?.lng ?? ""}`}
-          />
-        )}
-      </div>
-
-      <div className="mt-auto pt-5">
-        {canClaim ? (
-          <button className="btn btn-primary w-full" onClick={() => router.push(`/claim/${dropId}`)}>
-            You&apos;re here · Claim {formatUsd(drop!.amountCents, { compact: true })}
-          </button>
-        ) : (
-          <p className="text-center text-xs text-muted">
+          <div className="mt-6 w-full max-w-[420px] text-center text-xs text-muted">
             {drop
               ? drop.exact
                 ? `Exact spot revealed. Get within ${drop.campaign.claimRadiusM} m to claim.`
-                : `The exact spot appears when you're ${drop.campaign.revealRadiusM} m away.`
+                : `It's somewhere in the ${drop.campaign.searchRadiusM} m circle. The exact spot appears when you're ${drop.campaign.revealRadiusM} m away.`
               : "Loading…"}
-          </p>
+          </div>
+
+          <div className="mt-4 hidden w-full max-w-[420px] lg:block">
+            {canClaim && (
+              <button className="btn btn-primary w-full" onClick={() => router.push(`/claim/${dropId}`)}>
+                You&apos;re here · Claim {formatUsd(drop!.amountCents, { compact: true })}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Map */}
+        <div className="card mt-6 h-[190px] overflow-hidden lg:mt-0 lg:h-[70vh]">
+          {drop && (
+            <DropMap
+              center={mapCenter}
+              zoom={16}
+              drops={[{ id: drop.id, lat: drop.lat, lng: drop.lng, amountCents: drop.amountCents, exact: drop.exact, searchRadiusM: drop.campaign.searchRadiusM }]}
+              me={position}
+              interactive={false}
+              followKey={`${position?.lat ?? ""},${position?.lng ?? ""}`}
+              attribution="top-right"
+            />
+          )}
+        </div>
+      </div>
+
+      <div className="mt-auto pt-5 lg:hidden">
+        {canClaim && (
+          <button className="btn btn-primary w-full" onClick={() => router.push(`/claim/${dropId}`)}>
+            You&apos;re here · Claim {formatUsd(drop!.amountCents, { compact: true })}
+          </button>
         )}
       </div>
     </main>

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { ChevronRight, Eye, EyeOff, LogOut, ArrowUp, Plus, Copy, Check } from "lucide-react";
 import { Coin } from "./Coin";
-import { BottomNav } from "./BottomNav";
+import { DropsTokenCard } from "./DropsToken";
 import { PRIVY_APP_ID } from "./Providers";
 import { api } from "@/lib/client";
 import { formatDistance, formatUsd } from "@/lib/geo";
@@ -56,7 +56,9 @@ export function Home() {
   const [dollars, cents] = (total / 100).toFixed(2).split(".");
 
   return (
-    <main className="px-5 pt-6 pb-32">
+    <main className="page px-5 pt-6 pb-32 lg:pb-10">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-10">
+      <div>
       {nearest ? (
         <Link href={`/map?drop=${nearest.id}`} className="card mb-6 flex items-center gap-3 p-3 pr-4">
           <Coin size={40} />
@@ -95,11 +97,17 @@ export function Home() {
         </div>
       )}
 
-      <div className="mt-6 grid grid-cols-3 gap-3">
+      <div className="mt-6 grid grid-cols-3 gap-3 lg:max-w-[360px]">
         <Action href="/map" Icon={ArrowUp} label="Hunt" rotate />
         <Action href="/hide" Icon={Plus} label="Hide" />
         <WalletAction wallet={me?.user.wallet} />
       </div>
+
+      <div className="mt-8">
+        <DropsTokenCard />
+      </div>
+      </div>
+      <div>
 
       <Section title="Found" trailing={me ? `${me.totals.drops} drops` : undefined}>
         {me?.claims.length ? (
@@ -146,8 +154,11 @@ export function Home() {
         )}
       </Section>
 
-      <SignOut />
-      <BottomNav />
+      <div className="lg:hidden">
+        <SignOut />
+      </div>
+      </div>
+      </div>
     </main>
   );
 }

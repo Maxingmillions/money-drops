@@ -16,6 +16,7 @@ const Body = z.object({
   radiusM: z.number().int().min(50).max(5000),
   areaName: z.string().trim().max(60).optional(),
   perPersonLimit: z.number().int().min(1).max(100).default(1),
+  searchRadiusM: z.number().int().min(40).max(500).default(80),
   startsAt: z.string().datetime().optional(),
   endsAt: z.string().datetime().optional(),
 });
@@ -42,6 +43,7 @@ export const POST = handler(async (req) => {
       status: skip ? "ACTIVE" : "DRAFT",
       totalCents,
       perPersonLimit: body.perPersonLimit,
+      searchRadiusM: body.searchRadiusM,
       centerLat: body.centerLat,
       centerLng: body.centerLng,
       radiusM: body.radiusM,

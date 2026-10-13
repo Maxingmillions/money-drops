@@ -7,10 +7,10 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "Money Drops", template: "%s · Money Drops" },
+  title: { default: "Drops", template: "%s · Drops" },
   description: "Money becomes a real-world treasure hunt. Hide USDC anywhere; strangers walk there and claim it.",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Money Drops" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Drops" },
 };
 
 export const viewport: Viewport = {

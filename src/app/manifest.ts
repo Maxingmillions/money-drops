@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Money Drops",
-    short_name: "Money Drops",
+    name: "Drops",
+    short_name: "Drops",
     description: "Money becomes a real-world treasure hunt.",
     start_url: "/home",
     display: "standalone",

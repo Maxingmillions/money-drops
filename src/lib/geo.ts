@@ -68,16 +68,17 @@ function hash32(s: string): number {
 }
 
 /**
- * Public position of a hidden drop: nudged in a direction derived from its id.
- * Hunters see this approximate spot until they're within the reveal radius.
- * The nudge stays inside that radius so walking to the approximate spot always
- * reveals the real one.
+ * Centre of the public search circle for a hidden drop: the real spot nudged
+ * in a direction derived from its id. The nudge is at most
+ * (searchRadius - revealRadius) so the whole reveal zone sits inside the
+ * circle: hunters have to wander the circle until they're within the reveal
+ * radius of the real spot.
  */
-export function fuzzPosition(id: string, exact: LatLng, revealRadiusM: number): LatLng {
+export function fuzzPosition(id: string, exact: LatLng, searchRadiusM: number, revealRadiusM: number): LatLng {
   const h = hash32(id);
   const bearing = h % 360;
-  const maxM = Math.max(6, Math.floor(revealRadiusM * 0.8));
-  const dist = 5 + ((h >>> 9) % (maxM - 4));
+  const maxM = Math.max(4, searchRadiusM - revealRadiusM - 3);
+  const dist = Math.min(maxM, 4 + ((h >>> 9) % maxM));
   return offsetM(exact, dist, bearing);
 }
 

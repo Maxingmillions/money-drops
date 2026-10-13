@@ -196,8 +196,8 @@ export function ClaimScreen({ dropId }: { dropId: string }) {
                 className="btn btn-secondary flex-1"
                 onClick={() =>
                   navigator.share?.({
-                    title: "Money Drops",
-                    text: `I just found ${formatUsd(result.amountCents, { compact: true })} hidden in ${result.areaName ?? "the wild"} on Money Drops!`,
+                    title: "Drops",
+                    text: `I just found ${formatUsd(result.amountCents, { compact: true })} hidden in ${result.areaName ?? "the wild"} on Drops!`,
                   }).catch(() => {})
                 }
               >

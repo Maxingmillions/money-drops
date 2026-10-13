@@ -143,19 +143,59 @@ body {
   }
 }
 
-/* App shell: full-bleed on phones, a phone-sized column on desktop. */
+/* App shell: phones get full-bleed pages with a bottom nav; desktops (lg)
+   get a fixed left sidebar and the page fills the rest. */
 .shell {
   min-height: 100dvh;
-  margin: 0 auto;
   width: 100%;
   position: relative;
 }
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .shell {
-    max-width: 480px;
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+  .shell-main {
+    min-width: 0;
     min-height: 100dvh;
-    box-shadow: 0 0 0 1px var(--line), 0 30px 80px -40px rgb(15 23 42 / 0.5);
-    background: var(--bg);
+  }
+}
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  background: var(--bg-elev);
+  border-right: 1px solid var(--line);
+  flex-direction: column;
+  padding: 20px 14px;
+}
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--fg-muted);
+}
+.sidebar-link:hover {
+  background: var(--bg-soft);
+  color: var(--fg);
+}
+.sidebar-link.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+/* Page content column on desktop */
+.page {
+  width: 100%;
+  margin: 0 auto;
+}
+@media (min-width: 1024px) {
+  .page {
+    max-width: 1100px;
+    padding: 32px 40px;
   }
 }
 .safe-bottom {
@@ -167,27 +207,55 @@ body {
   position: relative;
   cursor: pointer;
 }
+.md-marker .spin {
+  animation: coin-spin 2.6s linear infinite, coin-bob 2.2s ease-in-out infinite;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
 .md-marker .coin {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 999px;
   background: radial-gradient(circle at 35% 30%, #3b1d7a, #15092f);
   box-shadow: 0 4px 10px -3px rgb(80 30 160 / 0.6), inset 0 0 0 2px var(--coin-1);
   display: grid;
   place-items: center;
-  color: var(--coin-2);
-  font-weight: 800;
-  font-size: 13px;
   transition: transform 0.15s ease;
+  backface-visibility: visible;
+}
+.md-marker .coin svg {
+  width: 60%;
+  height: 60%;
 }
 .md-marker.big .coin {
-  width: 40px;
-  height: 40px;
-  font-size: 17px;
+  width: 44px;
+  height: 44px;
 }
 .md-marker.selected .coin,
 .md-marker:hover .coin {
   transform: scale(1.15);
+}
+@keyframes coin-spin {
+  from {
+    transform: perspective(200px) rotateY(0deg);
+  }
+  to {
+    transform: perspective(200px) rotateY(360deg);
+  }
+}
+@keyframes coin-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .md-marker .spin {
+    animation: none;
+  }
 }
 .md-marker .tag {
   pointer-events: none;
@@ -245,6 +313,17 @@ body {
 }
 .maplibregl-ctrl-attrib {
   font-size: 10px;
+}
+/* Lift bottom map controls above the mobile bottom nav on full-screen maps. */
+.map-full .maplibregl-ctrl-bottom-left,
+.map-full .maplibregl-ctrl-bottom-right {
+  bottom: 92px;
+}
+@media (min-width: 1024px) {
+  .map-full .maplibregl-ctrl-bottom-left,
+  .map-full .maplibregl-ctrl-bottom-right {
+    bottom: 0;
+  }
 }
 
 @keyframes float {

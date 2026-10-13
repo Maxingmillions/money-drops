@@ -60,23 +60,30 @@ export function CampaignScreen({ id }: { id: string }) {
   const big = Math.max(...c.tiers.map((t) => t.amountCents));
 
   return (
-    <main className="min-h-dvh pb-10">
-      <div className="h-[220px] overflow-hidden rounded-b-[28px]">
+    <main className="min-h-dvh pb-28 lg:grid lg:min-h-0 lg:grid-cols-[480px_minmax(0,1fr)] lg:pb-0">
+      <div className="relative h-[220px] overflow-hidden rounded-b-[28px] lg:order-2 lg:h-dvh lg:rounded-none">
         <DropMap
           center={{ lat: c.centerLat, lng: c.centerLng }}
           zoom={14}
           drops={drops.filter((_, i) => c.drops[i].status === "HIDDEN")}
           bigAmountCents={big}
           circle={{ center: { lat: c.centerLat, lng: c.centerLng }, radiusM: c.radiusM }}
+          attribution="bottom-right"
         />
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center p-4 pt-[calc(env(safe-area-inset-top)+12px)] lg:hidden">
+          <Link href="/home" className="icon-btn pointer-events-auto">
+            <ChevronLeft size={18} />
+          </Link>
+          <div className="flex-1 truncate text-center text-[15px] font-semibold">{c.title}</div>
+          <div className="w-10" />
+        </div>
       </div>
-      <div className="px-5">
-        <div className="-mt-5 flex items-center">
+      <div className="px-5 lg:order-1 lg:h-dvh lg:overflow-y-auto lg:border-r lg:border-line lg:bg-elev lg:px-8 lg:py-8">
+        <div className="hidden items-center lg:flex">
           <Link href="/home" className="icon-btn">
             <ChevronLeft size={18} />
           </Link>
-          <div className="flex-1 text-center text-[15px] font-semibold">{c.title}</div>
-          <div className="w-10" />
+          <h1 className="ml-3 truncate text-xl font-bold">{c.title}</h1>
         </div>
 
         <div className="mt-6 text-center">

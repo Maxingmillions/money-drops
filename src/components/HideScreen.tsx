@@ -33,6 +33,7 @@ export function HideScreen() {
   const [radiusM, setRadiusM] = useState(400);
   const [areaName, setAreaName] = useState("");
   const [perPerson, setPerPerson] = useState(1);
+  const [searchRadiusM, setSearchRadiusM] = useState(80);
   const [startsAt, setStartsAt] = useState(() => toLocalInput(new Date(Date.now() + 60 * 60_000)));
   const [endsAt, setEndsAt] = useState(() => toLocalInput(new Date(Date.now() + 9 * 60 * 60_000)));
   const [busy, setBusy] = useState(false);
@@ -68,6 +69,7 @@ export function HideScreen() {
           radiusM,
           areaName: areaName.trim() || undefined,
           perPersonLimit: perPerson,
+          searchRadiusM,
           ...(kind === "EVENT"
             ? { startsAt: new Date(startsAt).toISOString(), endsAt: new Date(endsAt).toISOString() }
             : {}),
@@ -81,8 +83,8 @@ export function HideScreen() {
   };
 
   return (
-    <main className="min-h-dvh pb-10">
-      <div className="h-[200px] w-full overflow-hidden rounded-b-[28px]">
+    <main className="min-h-dvh pb-28 lg:grid lg:min-h-0 lg:grid-cols-[480px_minmax(0,1fr)] lg:pb-0">
+      <div className="relative h-[220px] w-full overflow-hidden rounded-b-[28px] lg:order-2 lg:h-dvh lg:rounded-none">
         <DropMap
           center={mapCenter}
           zoom={14}
@@ -90,16 +92,26 @@ export function HideScreen() {
           circle={{ center: mapCenter, radiusM }}
           onTap={setCenter}
           followKey={`${mapCenter.lat},${mapCenter.lng}`}
+          attribution="bottom-right"
         />
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center p-4 pt-[calc(env(safe-area-inset-top)+12px)] lg:hidden">
+          <Link href="/home" className="icon-btn pointer-events-auto">
+            <X size={18} />
+          </Link>
+          <div className="flex-1 text-center text-[15px] font-semibold drop-shadow-sm">Hide money</div>
+          <div className="w-10" />
+        </div>
+        <div className="pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)+60px)] -translate-x-1/2 rounded-full bg-fg/85 px-3 py-1.5 text-xs font-semibold text-white lg:left-auto lg:right-4 lg:top-4 lg:translate-x-0">
+          {center ? "Centre set · drag to look around" : "Tap the map to set the centre"}
+        </div>
       </div>
 
-      <div className="px-5">
-        <div className="-mt-5 flex items-center">
+      <div className="px-5 lg:order-1 lg:h-dvh lg:overflow-y-auto lg:border-r lg:border-line lg:bg-elev lg:px-8 lg:py-8">
+        <div className="hidden items-center lg:flex">
           <Link href="/home" className="icon-btn">
             <X size={18} />
           </Link>
-          <div className="flex-1 text-center text-[15px] font-semibold">Hide money</div>
-          <div className="w-10" />
+          <h1 className="ml-3 text-xl font-bold">Hide money</h1>
         </div>
 
         <div className="mt-6 text-center">
@@ -187,6 +199,16 @@ export function HideScreen() {
 
         <h3 className="mt-6 mb-2 text-sm font-semibold">Rules</h3>
         <div className="row-list text-sm">
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-muted">Search circle</span>
+            <select className="input !w-auto !py-1" value={searchRadiusM} onChange={(e) => setSearchRadiusM(Number(e.target.value))}>
+              {[50, 80, 120, 200, 300].map((n) => (
+                <option key={n} value={n}>
+                  {n} m
+                </option>
+              ))}
+            </select>
+          </div>
           {kind === "EVENT" && (
             <>
               <div className="flex items-center justify-between px-4 py-3">
@@ -216,7 +238,7 @@ export function HideScreen() {
         </div>
 
         <p className="mt-4 text-center text-xs text-muted">
-          Drops only go in public places. Roads, rail lines and private property are left out for you.
+          Hunters see a {searchRadiusM} m circle per drop and have to explore it. Drops only go in public places.
         </p>
 
         {error && <p className="mt-3 text-center text-sm text-danger">{error}</p>}

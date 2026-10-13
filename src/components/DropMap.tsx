@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Map as MLMap, Marker, setWorkerUrl, type GeoJSONSource, type MapMouseEvent } from "maplibre-gl";
+import { AttributionControl, Map as MLMap, Marker, setWorkerUrl, type GeoJSONSource, type MapMouseEvent } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { LatLng } from "@/lib/geo";
 
@@ -11,7 +11,16 @@ export const MAP_STYLE = "https://tiles.openfreemap.org/styles/positron";
 // (runs on postinstall) because bundlers can't serve MapLibre's sibling worker.
 if (typeof window !== "undefined") setWorkerUrl("/maplibre-gl-worker.mjs");
 
-export type MapDrop = { id: string; lat: number; lng: number; amountCents: number; exact?: boolean };
+export type MapDrop = {
+  id: string;
+  lat: number;
+  lng: number;
+  amountCents: number;
+  /** true when lat/lng is the real spot. */
+  exact?: boolean;
+  /** Search circle radius (metres) drawn around approximate drops. */
+  searchRadiusM?: number;
+};
 
 type Props = {
   center: LatLng;
@@ -24,15 +33,18 @@ type Props = {
   onTap?: (p: LatLng) => void;
   /** Draws a translucent circle (metres) around `circleCenter`. */
   circle?: { center: LatLng; radiusM: number } | null;
-  /** Big drops (top tier) get a halo once their exact spot is revealed. */
+  /** Big drops (top tier) get a bigger coin. */
   bigAmountCents?: number;
   interactive?: boolean;
   className?: string;
   /** Re-centre the map on `center` whenever this value changes. */
   followKey?: string | number;
+  attribution?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
 };
 
-function circlePolygon(center: LatLng, radiusM: number, steps = 64) {
+const LOGO_SVG = `<svg viewBox="0 0 64 64" aria-hidden><defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#14F195"/><stop offset="1" stop-color="#9945FF"/></linearGradient></defs><g fill="url(#g)"><path d="M22 18h26l-6 6H16z"/><path d="M16 29h26l6 6H22z"/><path d="M22 40h26l-6 6H16z"/></g></svg>`;
+
+function circlePolygon(center: LatLng, radiusM: number, steps = 48) {
   const coords: [number, number][] = [];
   const dLat = radiusM / 111_320;
   const dLng = radiusM / (111_320 * Math.cos((center.lat * Math.PI) / 180));
@@ -42,6 +54,8 @@ function circlePolygon(center: LatLng, radiusM: number, steps = 64) {
   }
   return { type: "Feature" as const, geometry: { type: "Polygon" as const, coordinates: [coords] }, properties: {} };
 }
+
+const EMPTY = { type: "FeatureCollection" as const, features: [] as ReturnType<typeof circlePolygon>[] };
 
 export function DropMap({
   center,
@@ -56,6 +70,7 @@ export function DropMap({
   interactive = true,
   className = "",
   followKey,
+  attribution = "bottom-right",
 }: Props) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<MLMap | null>(null);
@@ -78,28 +93,33 @@ export function DropMap({
       center: [center.lng, center.lat],
       zoom,
       interactive,
-      attributionControl: { compact: true },
+      attributionControl: false,
     });
+    m.addControl(new AttributionControl({ compact: true }), attribution);
     m.on("load", () => {
       loaded.current = true;
-      m.addSource("circle", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      m.addSource("circle", { type: "geojson", data: EMPTY });
+      m.addSource("search", { type: "geojson", data: EMPTY });
+      m.addLayer({ id: "search-fill", type: "fill", source: "search", paint: { "fill-color": "#8b3dff", "fill-opacity": 0.1 } });
       m.addLayer({
-        id: "circle-fill",
-        type: "fill",
-        source: "circle",
-        paint: { "fill-color": "#8b3dff", "fill-opacity": 0.12 },
-      });
-      m.addLayer({
-        id: "circle-line",
+        id: "search-line",
         type: "line",
-        source: "circle",
-        paint: { "line-color": "#8b3dff", "line-opacity": 0.6, "line-width": 1.5 },
+        source: "search",
+        paint: { "line-color": "#8b3dff", "line-opacity": 0.55, "line-width": 1.5, "line-dasharray": [2, 2] },
       });
+      m.addLayer({ id: "circle-fill", type: "fill", source: "circle", paint: { "fill-color": "#8b3dff", "fill-opacity": 0.12 } });
+      m.addLayer({ id: "circle-line", type: "line", source: "circle", paint: { "line-color": "#8b3dff", "line-opacity": 0.6, "line-width": 1.5 } });
     });
     m.on("click", (e: MapMouseEvent) => onTapRef.current?.({ lat: e.lngLat.lat, lng: e.lngLat.lng }));
     map.current = m;
+
+    // Keep the canvas sized to its container (sidebars, panels, rotation).
+    const ro = new ResizeObserver(() => m.resize());
+    ro.observe(el.current);
+
     const markerStore = markers.current;
     return () => {
+      ro.disconnect();
       m.remove();
       map.current = null;
       loaded.current = false;
@@ -115,7 +135,7 @@ export function DropMap({
     map.current.easeTo({ center: [center.lng, center.lat], duration: 600 });
   }, [followKey, center.lat, center.lng]);
 
-  // Sync drop markers.
+  // Sync drop markers + search circles.
   useEffect(() => {
     const m = map.current;
     if (!m) return;
@@ -127,7 +147,9 @@ export function DropMap({
       if (!mk) {
         const node = document.createElement("div");
         node.className = "md-marker";
-        node.innerHTML = `<div class="halo" style="display:none"></div><div class="coin">$</div><div class="tag"></div>`;
+        // Stagger animations so coins don't spin in lockstep.
+        const delay = -((parseInt(d.id.slice(-4), 36) || 0) % 2600);
+        node.innerHTML = `<div class="halo" style="display:none"></div><div class="spin" style="animation-delay:${delay}ms,${delay}ms"><div class="coin">${LOGO_SVG}</div></div><div class="tag"></div>`;
         node.addEventListener("click", (ev) => {
           ev.stopPropagation();
           onSelectRef.current?.(d.id);
@@ -152,6 +174,16 @@ export function DropMap({
         markers.current.delete(id);
       }
     }
+    const apply = () => {
+      const src = m.getSource("search") as GeoJSONSource | undefined;
+      if (!src) return;
+      src.setData({
+        type: "FeatureCollection",
+        features: drops.filter((d) => !d.exact && d.searchRadiusM).map((d) => circlePolygon(d, d.searchRadiusM!)),
+      });
+    };
+    if (loaded.current) apply();
+    else m.once("load", apply);
   }, [drops, selectedId, bigAmountCents]);
 
   // Me marker.
@@ -179,10 +211,7 @@ export function DropMap({
     const apply = () => {
       const src = m.getSource("circle") as GeoJSONSource | undefined;
       if (!src) return;
-      src.setData({
-        type: "FeatureCollection",
-        features: circle ? [circlePolygon(circle.center, circle.radiusM)] : [],
-      });
+      src.setData({ type: "FeatureCollection", features: circle ? [circlePolygon(circle.center, circle.radiusM)] : [] });
     };
     if (loaded.current) apply();
     else m.once("load", apply);

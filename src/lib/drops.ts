@@ -18,6 +18,7 @@ export type PublicDrop = {
     kind: string;
     creator: string;
     areaName: string | null;
+    searchRadiusM: number;
     revealRadiusM: number;
     claimRadiusM: number;
     endsAt: string | null;
@@ -60,7 +61,7 @@ export async function nearbyDrops(at: LatLng, radiusM: number): Promise<PublicDr
     .map((d) => {
       const dist = distanceM(at, d);
       const exact = dist <= d.campaign.revealRadiusM;
-      const pos = exact ? { lat: d.lat, lng: d.lng } : fuzzPosition(d.id, d, d.campaign.revealRadiusM);
+      const pos = exact ? { lat: d.lat, lng: d.lng } : fuzzPosition(d.id, d, d.campaign.searchRadiusM, d.campaign.revealRadiusM);
       const s = stats.get(d.campaignId)!;
       return {
         id: d.id,
@@ -75,6 +76,7 @@ export async function nearbyDrops(at: LatLng, radiusM: number): Promise<PublicDr
           kind: d.campaign.kind,
           creator: d.campaign.creator.handle ?? shortWallet(d.campaign.creator.wallet),
           areaName: d.campaign.areaName,
+          searchRadiusM: d.campaign.searchRadiusM,
           revealRadiusM: d.campaign.revealRadiusM,
           claimRadiusM: d.campaign.claimRadiusM,
           endsAt: d.campaign.endsAt?.toISOString() ?? null,
@@ -125,7 +127,7 @@ export async function dropForHunter(dropId: string, at: LatLng | null): Promise<
   const s = (await campaignStats([d.campaignId])).get(d.campaignId)!;
   const dist = at ? distanceM(at, d) : Number.POSITIVE_INFINITY;
   const exact = at ? dist <= d.campaign.revealRadiusM : false;
-  const pos = exact ? { lat: d.lat, lng: d.lng } : fuzzPosition(d.id, d, d.campaign.revealRadiusM);
+  const pos = exact ? { lat: d.lat, lng: d.lng } : fuzzPosition(d.id, d, d.campaign.searchRadiusM, d.campaign.revealRadiusM);
   return {
     id: d.id,
     amountCents: d.amountCents,
@@ -139,6 +141,7 @@ export async function dropForHunter(dropId: string, at: LatLng | null): Promise<
       kind: d.campaign.kind,
       creator: d.campaign.creator.handle ?? shortWallet(d.campaign.creator.wallet),
       areaName: d.campaign.areaName,
+      searchRadiusM: d.campaign.searchRadiusM,
       revealRadiusM: d.campaign.revealRadiusM,
       claimRadiusM: d.campaign.claimRadiusM,
       endsAt: d.campaign.endsAt?.toISOString() ?? null,

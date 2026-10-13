@@ -3,10 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Plus, Crosshair, Sparkles, Eye, ShieldCheck, Compass, MapPin } from "lucide-react";
+import { ChevronLeft, Plus, Crosshair, Sparkles, Eye, ShieldCheck, Compass, MapPin, Search } from "lucide-react";
 import { DropMap } from "./DropMap";
 import { Coin } from "./Coin";
-import { BottomNav } from "./BottomNav";
 import { api } from "@/lib/client";
 import { formatDistance, formatUsd, walkMinutes, type LatLng } from "@/lib/geo";
 import { DEV_LOCATION, useGeolocation } from "@/hooks/useGeolocation";
@@ -25,7 +24,6 @@ export function MapScreen() {
   const [followKey, setFollowKey] = useState(0);
 
   const center = position ?? FALLBACK;
-
   const lat = position?.lat ?? FALLBACK.lat;
   const lng = position?.lng ?? FALLBACK.lng;
   useEffect(() => {
@@ -47,122 +45,193 @@ export function MapScreen() {
   const total = drops.reduce((s, d) => s + d.amountCents, 0);
   const headline = selected?.campaign ?? drops[0]?.campaign ?? null;
 
+  const mapDrops = drops.map((d) => ({
+    id: d.id,
+    lat: d.lat,
+    lng: d.lng,
+    amountCents: d.amountCents,
+    exact: d.exact,
+    searchRadiusM: d.campaign.searchRadiusM,
+  }));
+
   return (
-    <main className="relative h-dvh overflow-hidden">
-      <DropMap
-        center={center}
-        zoom={15}
-        drops={drops}
-        me={position}
-        selectedId={selectedId}
-        onSelect={setSelectedId}
-        bigAmountCents={bigAmount}
-        followKey={followKey}
-        onTap={(p) => {
-          if (simMode) setSimulated(p);
-          else setSelectedId(null);
-        }}
-      />
-
-      {/* Top bar */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center gap-2 p-4 pt-[calc(env(safe-area-inset-top)+12px)]">
-        <Link href="/home" className="icon-btn pointer-events-auto">
-          <ChevronLeft size={20} />
-        </Link>
-        <div className="card pointer-events-auto flex min-w-0 flex-1 items-center gap-3 px-3 py-2">
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-sm font-bold text-white">
-            {(headline?.creator ?? "M").slice(0, 1).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">{headline?.title ?? "Nearby drops"}</div>
-            <div className="truncate text-xs text-muted">
-              {drops.length ? `${formatUsd(total, { compact: true })} · ${drops.length} drops around you` : "No drops within 4 km"}
-            </div>
-          </div>
+    <main className="relative h-dvh overflow-hidden lg:grid lg:grid-cols-[380px_minmax(0,1fr)]">
+      {/* Desktop side panel */}
+      <aside className="hidden h-dvh flex-col border-r border-line bg-elev lg:flex">
+        <div className="border-b border-line p-5">
+          <h1 className="text-xl font-bold">Hunt</h1>
+          <p className="text-sm text-muted">
+            {drops.length ? `${formatUsd(total, { compact: true })} in ${drops.length} drops within 4 km` : "No drops within 4 km"}
+          </p>
+          {error && !position && <p className="mt-2 text-xs text-danger">{error}</p>}
         </div>
-        <Link href="/hide" className="icon-btn pointer-events-auto">
-          <Plus size={20} />
-        </Link>
-      </div>
-
-      {/* Right controls */}
-      <div className="absolute right-4 top-24 z-10 flex flex-col gap-2">
-        <button className="icon-btn" aria-label="Centre on me" onClick={() => setFollowKey((k) => k + 1)}>
-          <Crosshair size={18} />
-        </button>
-        {DEV_LOCATION && (
-          <button
-            className={`icon-btn ${simMode ? "!bg-accent !text-white" : ""}`}
-            title="Dev: tap the map to simulate your location"
-            onClick={() => {
-              if (simMode && isSimulated) setSimulated(null);
-              setSimMode((s) => !s);
-            }}
-          >
-            <MapPin size={18} />
-          </button>
+        {selected ? (
+          <div className="p-5">
+            <button className="mb-3 text-sm text-muted hover:text-fg" onClick={() => setSelectedId(null)}>
+              ← All drops
+            </button>
+            <DropDetail drop={selected} onHunt={() => router.push(`/hunt/${selected.id}`)} />
+          </div>
+        ) : (
+          <ul className="flex-1 overflow-y-auto">
+            {drops.map((d) => (
+              <li key={d.id}>
+                <button
+                  className="flex w-full items-center gap-3 border-b border-line px-5 py-3 text-left hover:bg-soft"
+                  onClick={() => setSelectedId(d.id)}
+                >
+                  <Coin size={30} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold">{formatUsd(d.amountCents, { compact: true })} drop</div>
+                    <div className="truncate text-xs text-muted">
+                      {d.campaign.areaName ?? d.campaign.title} · {formatDistance(d.distanceM)}
+                    </div>
+                  </div>
+                  {d.exact && <span className="pill bg-success-soft text-success">Revealed</span>}
+                </button>
+              </li>
+            ))}
+            {drops.length === 0 && (
+              <li className="px-5 py-8 text-center text-sm text-muted">
+                Nothing nearby yet.{" "}
+                <Link href="/hide" className="text-accent">
+                  Hide some money
+                </Link>{" "}
+                or teleport with the pin button.
+              </li>
+            )}
+          </ul>
         )}
-      </div>
+      </aside>
 
-      {simMode && (
-        <div className="absolute left-1/2 top-24 z-10 -translate-x-1/2 rounded-full bg-fg px-3 py-1.5 text-xs font-semibold text-white">
-          Tap the map to move yourself
-        </div>
-      )}
-      {error && !position && (
-        <div className="absolute left-4 right-4 top-24 z-10 rounded-2xl bg-white/90 p-3 text-center text-xs text-muted shadow">
-          {error}
-        </div>
-      )}
+      {/* Map */}
+      <div className="relative h-full">
+        <DropMap
+          className="map-full"
+          center={center}
+          zoom={15}
+          drops={mapDrops}
+          me={position}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          bigAmountCents={bigAmount}
+          followKey={followKey}
+          onTap={(p) => {
+            if (simMode) setSimulated(p);
+            else setSelectedId(null);
+          }}
+        />
 
-      {/* Drop sheet */}
-      {selected ? (
-        <div className="absolute inset-x-0 bottom-0 z-20 px-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
-          <div className="card p-5">
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-line" />
-            <div className="flex items-center gap-3">
-              <Coin size={44} />
-              <div>
-                <div className="text-[22px] font-bold leading-tight">
-                  {formatUsd(selected.amountCents, { compact: true })} drop
-                </div>
-                <div className="text-sm text-muted">
-                  {selected.campaign.areaName ? `${selected.campaign.areaName} · ` : ""}
-                  {Number.isFinite(selected.distanceM)
-                    ? `${formatDistance(selected.distanceM)} · ${walkMinutes(selected.distanceM)} min walk`
-                    : "distance unknown"}
-                </div>
+        {/* Mobile top bar */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center gap-2 p-4 pt-[calc(env(safe-area-inset-top)+12px)] lg:hidden">
+          <Link href="/home" className="icon-btn pointer-events-auto">
+            <ChevronLeft size={20} />
+          </Link>
+          <div className="card pointer-events-auto flex min-w-0 flex-1 items-center gap-3 px-3 py-2">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-600 text-sm font-bold text-white">
+              {(headline?.creator ?? "D").slice(0, 1).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold">{headline?.title ?? "Nearby drops"}</div>
+              <div className="truncate text-xs text-muted">
+                {drops.length ? `${formatUsd(total, { compact: true })} · ${drops.length} drops around you` : "No drops within 4 km"}
               </div>
             </div>
-            <ul className="mt-4 space-y-2 text-sm text-muted">
-              <li className="flex items-center gap-2">
-                <Sparkles size={15} className="text-faint" />
-                <span>
-                  <b className="text-fg">
-                    {selected.campaign.bigRemaining} of {selected.campaign.bigTotal}
-                  </b>{" "}
-                  big drops still hidden
-                </span>
-              </li>
-              <li className="flex items-center gap-2">
-                <Eye size={15} className="text-faint" />
-                <span>
-                  Exact spot shows up <b className="text-fg">{selected.campaign.revealRadiusM} m</b> away
-                </span>
-              </li>
-              <li className="flex items-center gap-2">
-                <ShieldCheck size={15} className="text-faint" />
-                <span>Only ever in public places</span>
-              </li>
-            </ul>
-            <button className="btn btn-primary mt-5 w-full" onClick={() => router.push(`/hunt/${selected.id}`)}>
-              <Compass size={18} /> Start the hunt
+          </div>
+          <Link href="/hide" className="icon-btn pointer-events-auto">
+            <Plus size={20} />
+          </Link>
+        </div>
+
+        {/* Controls */}
+        <div className="absolute right-4 top-24 z-10 flex flex-col gap-2 lg:top-4">
+          <button className="icon-btn" aria-label="Centre on me" title="Centre on me" onClick={() => setFollowKey((k) => k + 1)}>
+            <Crosshair size={18} />
+          </button>
+          {DEV_LOCATION && (
+            <button
+              className={`icon-btn ${simMode ? "!bg-accent !text-white" : ""}`}
+              title="Tap the map to move yourself (dev)"
+              onClick={() => {
+                if (simMode && isSimulated) setSimulated(null);
+                setSimMode((s) => !s);
+              }}
+            >
+              <MapPin size={18} />
             </button>
+          )}
+        </div>
+
+        {simMode && (
+          <div className="absolute left-1/2 top-24 z-10 -translate-x-1/2 rounded-full bg-fg px-3 py-1.5 text-xs font-semibold text-white lg:top-4">
+            Tap the map to move yourself
+          </div>
+        )}
+        {error && !position && (
+          <div className="absolute left-4 right-4 top-24 z-10 rounded-2xl bg-white/90 p-3 text-center text-xs text-muted shadow lg:hidden">
+            {error}
+          </div>
+        )}
+
+        {/* Mobile drop sheet */}
+        {selected && (
+          <div className="absolute inset-x-0 bottom-0 z-40 px-3 pb-[calc(env(safe-area-inset-bottom)+12px)] lg:hidden">
+            <div className="card p-5">
+              <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-line" />
+              <DropDetail drop={selected} onHunt={() => router.push(`/hunt/${selected.id}`)} />
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
+
+function DropDetail({ drop, onHunt }: { drop: PublicDrop; onHunt: () => void }) {
+  return (
+    <div>
+      <div className="flex items-center gap-3">
+        <Coin size={44} />
+        <div>
+          <div className="text-[22px] font-bold leading-tight">{formatUsd(drop.amountCents, { compact: true })} drop</div>
+          <div className="text-sm text-muted">
+            {drop.campaign.areaName ? `${drop.campaign.areaName} · ` : ""}
+            {Number.isFinite(drop.distanceM)
+              ? `${formatDistance(drop.distanceM)} · ${walkMinutes(drop.distanceM)} min walk`
+              : "distance unknown"}
           </div>
         </div>
-      ) : (
-        <BottomNav />
-      )}
-    </main>
+      </div>
+      <ul className="mt-4 space-y-2 text-sm text-muted">
+        <li className="flex items-center gap-2">
+          <Sparkles size={15} className="text-faint" />
+          <span>
+            <b className="text-fg">
+              {drop.campaign.bigRemaining} of {drop.campaign.bigTotal}
+            </b>{" "}
+            big drops still hidden
+          </span>
+        </li>
+        <li className="flex items-center gap-2">
+          <Search size={15} className="text-faint" />
+          <span>
+            Hidden somewhere in a <b className="text-fg">{drop.campaign.searchRadiusM} m</b> circle
+          </span>
+        </li>
+        <li className="flex items-center gap-2">
+          <Eye size={15} className="text-faint" />
+          <span>
+            Exact spot shows up <b className="text-fg">{drop.campaign.revealRadiusM} m</b> away
+          </span>
+        </li>
+        <li className="flex items-center gap-2">
+          <ShieldCheck size={15} className="text-faint" />
+          <span>Only ever in public places</span>
+        </li>
+      </ul>
+      <button className="btn btn-primary mt-5 w-full" onClick={onHunt}>
+        <Compass size={18} /> Start the hunt
+      </button>
+    </div>
   );
 }

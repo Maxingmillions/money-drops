@@ -1,4 +1,4 @@
-# Money Drops
+# Drops
 
 **Money becomes a real-world treasure hunt.** Hide USDC anywhere in the world. A stranger walks to that spot, opens the app, and claims it.
 
@@ -9,14 +9,16 @@ Pokémon GO, but for real dollars on Solana.
 A mobile-first web app (installable PWA, also works on desktop) built with Next.js 16, React 19, Tailwind 4, Prisma (Postgres), MapLibre and a three.js Solana coin.
 
 **Hunters**
-- Sign in with Phantom or any Solana wallet, or with Google, Apple or email. Users without a wallet get an embedded Solana wallet created for them (via Privy).
+- Sign in with Phantom, Solflare, Backpack or any Wallet Standard Solana wallet (native Sign-In With Solana, no third party). Google, Apple and email sign-in with an auto-created Solana wallet are available once a Privy app is configured.
 - Wallet home: total found, nearby-drop banner, claim history with on-chain receipts.
-- Map of nearby drops. Positions are fuzzed until you're inside the reveal radius (default 30 m), then the exact spot appears.
+- Map of nearby drops as spinning Solana coins. Each hidden drop shows a search circle (default 80 m) rather than a point: the real spot is somewhere inside, and the exact location only appears once you're within the reveal radius (default 30 m), so hunters have to explore.
+- Works as a phone app (installable PWA, bottom nav, full-screen map) and a desktop app (sidebar, map with a side panel, two-column forms).
+- $DROPS token card and DexScreener chart page, live as soon as `NEXT_PUBLIC_DROPS_TOKEN` is set to the mint address.
 - Hunt screen: live distance, compass needle, warmer/colder, mini map.
 - Claim screen: camera backdrop, hold-to-claim, instant "You found $X" card. Claims are validated server-side (distance, one-per-person, campaign window) and the drop is flipped atomically so two people can't take the same one.
 
 **Creators**
-- "Hide money": name the drop, pick proximity or event mode, set tiers (e.g. 20 × $5, 5 × $20, 1 × $100), tap the map to choose the area and radius, set the time window and per-person limit.
+- "Hide money": name the drop, pick proximity or event mode, set tiers (e.g. 20 × $5, 5 × $20, 1 × $100), tap the map to choose the area and radius, set the search circle size, time window and per-person limit.
 - Campaign page: live stats per tier, drop map, escrow deposit link.
 
 **Money (Solana)**
@@ -63,7 +65,9 @@ With `NEXT_PUBLIC_DEV_LOCATION="true"` (default in `.env.example`) the map has a
 
 "Continue as test hunter" signs you in with a random wallet, no Privy needed. It's always on in development; in production it only appears when `DEV_LOGIN` and `NEXT_PUBLIC_DEV_LOGIN` are both `true`. `DEV_SKIP_FUNDING="true"` makes new campaigns live immediately without an on-chain deposit and records claims without a payout. Turn these off once Privy and the treasury are configured.
 
-### Real sign-in (Phantom, Google, Apple, email)
+### Google, Apple and email sign-in
+
+Wallet sign-in works out of the box. For social logins (with a wallet created for the user):
 
 1. Create an app at [dashboard.privy.io](https://dashboard.privy.io).
 2. Enable the login methods you want (wallet, Google, Apple, email) and Solana embedded wallets.
@@ -95,10 +99,10 @@ Fund the treasury with a little SOL for fees (`solana airdrop 1 <address> --url 
 
 ```
 prisma/schema.prisma      User, Campaign, Drop, Claim
-src/app/api/              auth, me, drops (nearby, detail, claim), campaigns (create, detail, fund)
+src/app/api/              auth (nonce + verify for wallets, privy, dev), me, drops, campaigns
 src/lib/                  geo math, session cookies, Privy verification, Solana escrow/payout, data access
 src/components/           screens: SignIn, Home, MapScreen, HuntScreen, ClaimScreen, HideScreen, CampaignScreen
-src/hooks/                useGeolocation (with dev simulation), useCompassHeading
+src/hooks/                useGeolocation (with dev simulation), useCompassHeading, useSolanaWallets (Wallet Standard)
 src/proxy.ts              redirects signed-out users to /sign-in
 ```
 

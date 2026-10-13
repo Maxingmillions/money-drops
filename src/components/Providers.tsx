@@ -33,7 +33,7 @@ export function Providers({ children }: { children: ReactNode }) {
           accentColor: "#8b3dff",
           walletChainType: "solana-only",
           showWalletLoginFirst: true,
-          landingHeader: "Money Drops",
+          landingHeader: "Drops",
           loginMessage: "Sign in to hunt and hide drops",
         },
         loginMethods: ["wallet", "google", "apple", "email"],

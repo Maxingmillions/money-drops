@@ -47,6 +47,8 @@ model Campaign {
 
   totalCents     Int
   perPersonLimit Int @default(1)
+  /// Hunters see a search circle of this radius; the real spot is somewhere inside.
+  searchRadiusM  Int @default(80)
   /// Exact drop location is revealed once a hunter is within this many metres.
   revealRadiusM  Int @default(30)
   /// A claim is accepted when the hunter is within this many metres.
@@ -109,3 +111,11 @@ model Claim {
   @@index([userId])
 }
 
+
+/// One-time nonces for Sign-In With Solana (native wallet login).
+model Nonce {
+  value     String    @id
+  wallet    String
+  expiresAt DateTime
+  usedAt    DateTime?
+}
