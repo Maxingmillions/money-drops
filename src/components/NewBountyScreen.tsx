@@ -65,7 +65,7 @@ export function NewBountyScreen() {
   return (
     <main className="min-h-dvh pb-28 lg:grid lg:min-h-0 lg:grid-cols-[480px_minmax(0,1fr)] lg:pb-0">
       <MobileBar href="/bounties" title="Post a bounty" icon={<X size={18} />} />
-      <div className={`relative mx-3 h-[260px] overflow-hidden rounded-[28px] lg:order-2 lg:mx-0 lg:h-dvh lg:rounded-none ${useLocation ? "" : "opacity-40"}`}>
+      <div className={`relative mx-3 aspect-square overflow-hidden rounded-[28px] lg:order-2 lg:mx-0 lg:aspect-auto lg:h-dvh lg:rounded-none ${useLocation ? "" : "opacity-40"}`}>
         <DropMap center={mapCenter} zoom={14} me={position} circle={useLocation ? { center: mapCenter, radiusM: clampedRadius } : null} onTap={(p) => useLocation && setCenter(p)} followKey={`${mapCenter.lat},${mapCenter.lng}`} attribution="bottom-right" />
         {useLocation && (
           <>
