@@ -9,6 +9,7 @@ import { DropMap, type MapHunt, type Viewport } from "./DropMap";
 import { LocationSearch } from "./LocationSearch";
 import { Coin } from "./Coin";
 import { api } from "@/lib/client";
+import { inWalletBrowser, isIOS, openInSystemBrowser } from "@/lib/handoff";
 import { formatDistance, formatSol, walkMinutes, type LatLng } from "@/lib/geo";
 import { DEV_LOCATION, useGeolocation } from "@/hooks/useGeolocation";
 import type { PublicDrop } from "@/lib/drops";
@@ -253,7 +254,16 @@ export function MapScreen({ guest = false }: { guest?: boolean }) {
         )}
         {error && !position && (
           <div className="absolute left-4 right-4 top-[calc(env(safe-area-inset-top)+134px)] z-10 rounded-2xl bg-white/90 p-3 text-center text-xs text-muted shadow lg:hidden">
-            {error}
+            {inWalletBrowser() ? (
+              <>
+                Location doesn&apos;t work inside the wallet&apos;s browser.{" "}
+                <button className="font-semibold text-accent" onClick={() => openInSystemBrowser().catch(() => {})}>
+                  Open in {isIOS() ? "Safari" : "Chrome"} →
+                </button>
+              </>
+            ) : (
+              error
+            )}
           </div>
         )}
 

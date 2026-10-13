@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapPin, Compass, X } from "lucide-react";
+import { MapPin, Compass, X, ExternalLink, Copy, Check } from "lucide-react";
+import { inWalletBrowser, isIOS, openInSystemBrowser } from "@/lib/handoff";
 
 /**
  * Big one-time prompt after sign-in: asks for location (and, on iOS, motion
@@ -11,10 +12,12 @@ import { MapPin, Compass, X } from "lucide-react";
 const SEEN_KEY = "md:perm-asked";
 export const LOCATION_GRANTED_EVENT = "md:location-granted";
 
-type Stage = "hidden" | "ask" | "busy" | "denied";
+type Stage = "hidden" | "ask" | "busy" | "denied" | "wallet";
 
 export function PermissionsGate() {
   const [stage, setStage] = useState<Stage>("hidden");
+  const [link, setLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) return;
@@ -24,6 +27,12 @@ export function PermissionsGate() {
     } catch {}
     if (dismissed) return;
     let cancelled = false;
+    // Wallet in-app browsers (Phantom on iOS especially) never pass location
+    // through, so the only fix is to continue in the system browser.
+    if (inWalletBrowser()) {
+      const t = setTimeout(() => setStage("wallet"), 0);
+      return () => clearTimeout(t);
+    }
     const show = () => !cancelled && setStage("ask");
     // Skip the prompt entirely when the browser already granted location.
     if (navigator.permissions?.query) {
@@ -81,9 +90,60 @@ export function PermissionsGate() {
     setStage("hidden");
   };
 
+  const handoff = async () => {
+    try {
+      const url = await openInSystemBrowser();
+      setLink(url);
+    } catch {
+      setLink(null);
+    }
+  };
+  const copy = async () => {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+
   if (stage === "hidden") return null;
-  const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const inWallet = /Phantom|Solflare|Backpack/i.test(navigator.userAgent);
+  const ios = isIOS();
+  const inWallet = inWalletBrowser();
+  const browserName = ios ? "Safari" : "Chrome";
+
+  if (stage === "wallet") {
+    return (
+      <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 p-4 backdrop-blur-sm sm:items-center">
+        <div className="card pop-in w-full max-w-[420px] p-6 text-center">
+          <button className="icon-btn absolute right-3 top-3 !h-8 !w-8" aria-label="Not now" onClick={dismiss}>
+            <X size={14} />
+          </button>
+          <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-accent-soft text-accent">
+            <MapPin size={36} />
+          </div>
+          <h2 className="mt-5 text-[22px] font-bold">Hunt in {browserName}, not in the wallet</h2>
+          <p className="mt-2 text-sm text-muted">
+            Your wallet&apos;s built-in browser doesn&apos;t share your location with websites, so the map and compass can&apos;t work here. Open Drops in {browserName} and you&apos;ll stay signed in. Come back to the wallet only when you need to pay for a hunt or bounty.
+          </p>
+          <button className="btn btn-primary mt-5 w-full" onClick={handoff}>
+            <ExternalLink size={16} /> Open in {browserName}
+          </button>
+          {link && (
+            <div className="mt-3 rounded-2xl bg-soft p-3 text-left text-xs text-muted">
+              Didn&apos;t switch? Copy this link and paste it into {browserName} within 5 minutes.
+              <button className="btn btn-secondary mt-2 w-full !py-2 text-xs" onClick={copy}>
+                {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : "Copy link"}
+              </button>
+            </div>
+          )}
+          <button className="mt-3 text-sm font-semibold text-muted" onClick={dismiss}>
+            Stay here
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 p-4 backdrop-blur-sm sm:items-center">
