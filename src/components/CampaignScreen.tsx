@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { SolAmount } from "./Sol";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { DropMap } from "./DropMap";
@@ -86,9 +87,9 @@ export function CampaignScreen({ id }: { id: string }) {
         </div>
 
         <div className="mt-6 text-center">
-          <div className="text-[44px] font-bold leading-none tracking-tight">{formatSol(c.totalLamports, { compact: true })}</div>
+          <div className="text-[44px] font-bold leading-none tracking-tight"><SolAmount lamports={c.totalLamports} /></div>
           <div className="mt-1 text-sm text-muted">
-            {c.remaining} of {c.dropCount} drops still hidden · {formatSol(c.claimedLamports, { compact: true })} found
+            {c.remaining} of {c.dropCount} drops still hidden · <SolAmount lamports={c.claimedLamports} /> found
           </div>
           <div className="mt-3">
             <StatusPill status={c.status} />
@@ -115,7 +116,7 @@ export function CampaignScreen({ id }: { id: string }) {
             <div key={t.amountLamports} className="flex items-center gap-3 px-4 py-3">
               <Coin size={22} />
               <span>
-                {t.count} {t.count === 1 ? "drop" : "drops"} of {formatSol(t.amountLamports, { compact: true })}
+                {t.count} {t.count === 1 ? "drop" : "drops"} of <SolAmount lamports={t.amountLamports} />
               </span>
               <span className="ml-auto text-muted">{t.remaining} left</span>
             </div>

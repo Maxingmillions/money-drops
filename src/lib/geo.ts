@@ -107,12 +107,12 @@ export const LAMPORTS = 1_000_000_000;
 export const solToLamports = (sol: number) => Math.round(sol * LAMPORTS);
 export const lamportsToSol = (lamports: number) => lamports / LAMPORTS;
 
-/** "0.5 SOL", "12 SOL", "0.0025 SOL". `compact` drops the unit suffix to "◎0.5". */
+/** "0.5 SOL", "12 SOL", "0.0025 SOL". `compact` drops the unit suffix ("0.5"); pair it with <SolMark/>. */
 export function formatSol(lamports: number, opts: { compact?: boolean } = {}) {
   const sol = lamportsToSol(lamports);
   const digits = sol >= 100 ? 1 : sol >= 1 ? 2 : sol >= 0.01 ? 3 : sol >= 0.0001 ? 4 : 6;
   const n = sol.toLocaleString(undefined, { maximumFractionDigits: digits });
-  return opts.compact ? `◎${n}` : `${n} SOL`;
+  return opts.compact ? n : `${n} SOL`;
 }
 
 export function formatDistance(m: number) {

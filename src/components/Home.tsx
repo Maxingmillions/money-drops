@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SolAmount, SolMark } from "./Sol";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
@@ -64,7 +65,7 @@ export function Home() {
           <Coin size={40} />
           <div className="min-w-0 flex-1">
             <div className="truncate text-[15px] font-semibold">
-              A {formatSol(nearest.amountLamports, { compact: true })} drop is {formatDistance(nearest.distanceM)} away
+              A <SolAmount lamports={nearest.amountLamports} /> drop is {formatDistance(nearest.distanceM)} away
             </div>
             <div className="truncate text-xs text-muted">
               {nearest.campaign.areaName ? `${nearest.campaign.areaName} · ` : ""}
@@ -84,9 +85,9 @@ export function Home() {
         </button>
       </div>
       <div className="mt-1 text-[52px] font-bold leading-none tracking-tight">
-        {hidden ? "◎•••" : (
+        {hidden ? <><SolMark /> •••</> : (
           <>
-            {formatSol(total, { compact: true })}
+            <SolAmount lamports={total} />
             <span className="ml-2 text-[22px] font-semibold text-faint">SOL</span>
           </>
         )}
@@ -129,7 +130,7 @@ export function Home() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-semibold">{formatSol(c.amountLamports, { compact: true })}</div>
+                  <div className="text-sm font-semibold"><SolAmount lamports={c.amountLamports} /></div>
                   <PayoutBadge status={c.payoutStatus} sig={c.payoutTxSig} />
                 </div>
               </div>
@@ -151,7 +152,7 @@ export function Home() {
                     {c.remaining} left · {c.status.toLowerCase()}
                   </div>
                 </div>
-                <div className="text-sm font-semibold">{formatSol(c.totalLamports, { compact: true })}</div>
+                <div className="text-sm font-semibold"><SolAmount lamports={c.totalLamports} /></div>
                 <ChevronRight className="text-faint" size={16} />
               </Link>
             ))}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SolAmount, SolMark } from "./Sol";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X, Lock, MapPin } from "lucide-react";
@@ -105,7 +106,7 @@ export function NewBountyScreen() {
             <label className="row-list block px-4 py-3">
               <span className="label">Reward per winner (SOL)</span>
               <div className="flex items-center gap-1 text-2xl font-bold">
-                <span className="text-faint">◎</span>
+                <SolMark className="opacity-70" />
                 <input className="w-full bg-transparent outline-none" inputMode="decimal" value={reward} onChange={(e) => setReward(e.target.value)} />
               </div>
             </label>
@@ -152,7 +153,7 @@ export function NewBountyScreen() {
         </p>
         {error && <p className="mt-3 text-center text-sm text-danger">{error}</p>}
         <button className="btn btn-primary mt-4 w-full" disabled={busy || rewardLamports < 1_000_000} onClick={submit}>
-          <Lock size={16} /> Post bounty · {formatSol(totalLamports, { compact: true })}
+          <Lock size={16} /> Post bounty · <SolAmount lamports={totalLamports} />
         </button>
       </div>
     </main>

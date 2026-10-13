@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { SolAmount } from "./Sol";
 import Link from "next/link";
 import { ChevronLeft, Shield, Trash2, Target, Coins, Users, ListChecks, Check } from "lucide-react";
 import { api } from "@/lib/client";
@@ -77,7 +78,7 @@ export function ModScreen() {
                   <Link href={`/bounties/${item.bounty.id}`} className="truncate text-sm font-bold text-accent">
                     {item.bounty.title}
                   </Link>
-                  <span className="text-sm font-bold">{formatSol(item.bounty.rewardLamports, { compact: true })}</span>
+                  <span className="text-sm font-bold"><SolAmount lamports={item.bounty.rewardLamports} /></span>
                 </div>
                 <SubmissionRow
                   s={{ id: item.id, user: item.user, mine: false, videoUrl: item.videoUrl, files: item.files, note: item.note, status: "PENDING", reviewNote: null, payoutStatus: "PENDING", payoutTxSig: null, createdAt: item.createdAt }}
@@ -97,9 +98,9 @@ export function ModScreen() {
                 key={c.id}
                 href={`/campaigns/${c.id}`}
                 title={c.title}
-                meta={`${c.creator} · ${c.areaName ?? "no area"} · ${c.remaining}/${c.dropCount} drops left · ${formatSol(c.remainingLamports, { compact: true })} unclaimed${c.funded ? " · on-chain" : ""}`}
+                meta={`${c.creator} · ${c.areaName ?? "no area"} · ${c.remaining}/${c.dropCount} drops left · ${formatSol(c.remainingLamports)} unclaimed${c.funded ? " · on-chain" : ""}`}
                 status={c.status}
-                amount={formatSol(c.totalLamports, { compact: true })}
+                amount={c.totalLamports}
                 endpoint={`/api/mod/campaigns/${c.id}`}
                 canAct={c.status === "ACTIVE" || c.status === "DRAFT"}
                 isAdmin={posts.me.role === "ADMIN"}
@@ -119,7 +120,7 @@ export function ModScreen() {
                 title={b.title}
                 meta={`${b.creator} · ${b.areaName ?? "anywhere"} · ${b.approved}/${b.maxWinners} paid · ${b.pending} pending${b.funded ? " · on-chain" : ""}`}
                 status={b.status}
-                amount={formatSol(b.rewardLamports * b.maxWinners, { compact: true })}
+                amount={b.rewardLamports * b.maxWinners}
                 endpoint={`/api/mod/bounties/${b.id}`}
                 canAct={b.status === "OPEN" || b.status === "DRAFT"}
                 isAdmin={posts.me.role === "ADMIN"}
@@ -139,7 +140,7 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <div className="row-list px-4 py-8 text-center text-sm text-muted">{children}</div>;
 }
 
-function PostRow({ href, title, meta, status, amount, endpoint, canAct, isAdmin, onChanged }: { href: string; title: string; meta: string; status: string; amount: string; endpoint: string; canAct: boolean; isAdmin: boolean; onChanged: () => void }) {
+function PostRow({ href, title, meta, status, amount, endpoint, canAct, isAdmin, onChanged }: { href: string; title: string; meta: string; status: string; amount: number; endpoint: string; canAct: boolean; isAdmin: boolean; onChanged: () => void }) {
   const [deleting, setDeleting] = useState(false);
   const [gone, setGone] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -158,11 +159,11 @@ function PostRow({ href, title, meta, status, amount, endpoint, canAct, isAdmin,
           <div className="mt-0.5 text-xs text-muted">{meta}</div>
         </div>
         <span className={`pill ${pill}`}>{status.toLowerCase()}</span>
-        <span className="text-sm font-bold">{amount}</span>
+        <span className="text-sm font-bold"><SolAmount lamports={amount} /></span>
       </div>
       {result ? (
         <p className="mt-3 flex items-center gap-1 text-sm text-success">
-          <Check size={14} /> Taken down. Refunded {formatSol(result.refundedLamports, { compact: true })} · {result.note}
+          <Check size={14} /> Taken down. Refunded <SolAmount lamports={result.refundedLamports} /> · {result.note}
           {result.txSig && (
             <a className="ml-1 underline" href={explorerTxUrl(result.txSig)} target="_blank" rel="noreferrer">
               tx ↗

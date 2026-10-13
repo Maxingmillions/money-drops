@@ -4,6 +4,7 @@ import { ApiError, handler, json, parseBody, requireSession } from "@/lib/api";
 import { scatterDrops } from "@/lib/geo";
 import { requiresFunding, treasuryAddress } from "@/lib/solana";
 import { collectFee, feeFor, totalWithFee } from "@/lib/pool";
+import { assertNotSpam } from "@/lib/moderate";
 
 const Body = z.object({
   title: z.string().trim().min(2).max(60),
@@ -36,6 +37,7 @@ export const POST = handler(async (req) => {
     if (new Date(body.endsAt) <= new Date(body.startsAt)) throw new ApiError(400, "End must be after start");
   }
 
+  await assertNotSpam("drop", [body.title, body.areaName ?? ""].join("\n"));
   const me = await prisma.user.findUniqueOrThrow({ where: { id: session.userId } });
   const skip = !requiresFunding(me.loginMethod);
   const campaign = await prisma.campaign.create({

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { SOL_MARK_HTML } from "./Sol";
 import {
   AttributionControl,
   Map as MLMap,
@@ -68,7 +69,7 @@ const DETAIL_ZOOM = 14;
 const LOGO_SVG = `<svg viewBox="0 0 64 64" aria-hidden><defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#14F195"/><stop offset="1" stop-color="#9945FF"/></linearGradient></defs><g fill="url(#g)"><path d="M22 18h26l-6 6H16z"/><path d="M16 29h26l6 6H22z"/><path d="M22 40h26l-6 6H16z"/></g></svg>`;
 
 import { formatSol } from "@/lib/geo";
-const usd = (lamports: number) => formatSol(lamports, { compact: true });
+const usd = (lamports: number) => `${SOL_MARK_HTML}${formatSol(lamports, { compact: true })}`;
 
 function circlePolygon(center: LatLng, radiusM: number, steps = 48) {
   const coords: [number, number][] = [];
@@ -221,7 +222,7 @@ export function DropMap({
           mk = new Marker({ element: node, anchor: "center" }).setLngLat([h.lng, h.lat]).addTo(m);
           huntMarkers.current.set(h.id, mk);
         }
-        mk.getElement().querySelector("span")!.textContent = `${usd(h.remainingLamports)} · ${h.remaining} drops`;
+        mk.getElement().querySelector("span")!.innerHTML = `${usd(h.remainingLamports)} · ${h.remaining} drops`;
       }
     }
     for (const [id, mk] of huntMarkers.current) {
@@ -262,7 +263,7 @@ export function DropMap({
             mk = new Marker({ element: node, anchor: "center" }).setLngLat([lng, lat]).addTo(m);
             markers.current.set(key, mk);
           }
-          mk.getElement().querySelector("span")!.textContent = `${usd(Number(p.total))} · ${p.point_count}`;
+          mk.getElement().querySelector("span")!.innerHTML = `${usd(Number(p.total))} · ${p.point_count}`;
         } else {
           const id = String(p.id);
           const amountLamports = Number(p.amountLamports);
@@ -287,7 +288,7 @@ export function DropMap({
           const tag = node.querySelector<HTMLElement>(".tag")!;
           const showTag = detail && (big || amountLamports >= 2000 || id === selectedRef.current);
           tag.style.display = showTag ? "block" : "none";
-          tag.textContent = usd(amountLamports);
+          tag.innerHTML = usd(amountLamports);
           node.querySelector<HTMLElement>(".halo")!.style.display = detail && p.exact === true ? "block" : "none";
         }
       }

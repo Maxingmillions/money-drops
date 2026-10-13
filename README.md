@@ -56,7 +56,8 @@ A mobile-first web app (installable PWA, also works on desktop) built with Next.
    | `NEXT_PUBLIC_DEV_LOGIN` | `true` |
    | `DEV_SKIP_FUNDING` | `true` (campaigns go live without an on-chain deposit) |
    | `NEXT_PUBLIC_DEV_LOCATION` | `true` (optional: tap the map to teleport) |
-   | `SEED_DEMO` | `true` (optional: seeds the Tokyo demo hunt on first build) |
+   | `SEED_DEMO` | `true` (optional: seeds demo content on build; leave unset for an empty site) |
+   | `ANTHROPIC_API_KEY` | optional: turns on AI spam moderation for chat, bounties and hidden money |
    | `ADMIN_WALLETS` | your wallet address, so you can review bounties and delete posts |
    | `NEXT_PUBLIC_TREASURY_ADDRESS` / `TREASURY_SECRET_KEY` | escrow wallet (`npm run treasury:new`); set `DEV_SKIP_FUNDING` to `false` so wallet accounts really pay |
    | `BLOB_READ_WRITE_TOKEN` | set automatically by the linked Vercel Blob store; needed for proof uploads |
@@ -113,6 +114,7 @@ Give the treasury some devnet SOL from [faucet.solana.com](https://faucet.solana
 | `npm run vercel-build` | What Vercel runs: schema push, optional seed, build |
 | `npm run db:seed` | Seed demo content: hunts in six cities, bounties, chat, claims, a demo mod |
 | `npm run db:unseed` | Remove everything the seed created |
+| `npm run db:wipe` | Remove all content (hunts, drops, bounties, chat, pool history) and keep accounts |
 | `npm run db:studio` | Browse the database |
 | `npm run treasury:new` | Generate an escrow keypair |
 
@@ -136,3 +138,7 @@ src/proxy.ts              redirects signed-out users to /sign-in
 - Anti-spoofing: GPS plausibility checks, speed limits between claims, device attestation.
 - Clustering on the map at low zoom, push notifications when a drop is nearby.
 - PostGIS for geo queries at scale, refunds for ended event drops, creator analytics.
+
+## Spam moderation
+
+Every chat message, bounty and hidden-money post is screened before it is saved (`src/lib/moderate.ts`). A built-in heuristic blocks obvious junk (links in chat, scam bait, repeated characters). With `ANTHROPIC_API_KEY` set, anything that passes the heuristic is also checked by Claude (`claude-opus-5-5`, override with `MODERATION_MODEL`), which is told to flag spam, scams and bot junk only and to allow everything else. If the API is unreachable the post goes through, so an outage never locks real users out. Blocked posts return a 400 with the reason, which the forms show inline.

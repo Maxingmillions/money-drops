@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SolAmount, SolMark } from "./Sol";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X, Lock, MapPin } from "lucide-react";
@@ -46,7 +47,7 @@ export function HideScreen() {
       const r = await api<{ campaign: { id: string; status: string } }>("/api/campaigns", {
         method: "POST",
         json: {
-          title: areaName.trim() ? `${formatSol(totalLamports, { compact: true })} in ${areaName.trim()}` : `${formatSol(totalLamports, { compact: true })} drop`,
+          title: areaName.trim() ? `${formatSol(totalLamports)} in ${areaName.trim()}` : `${formatSol(totalLamports)} drop`,
           kind: "PROXIMITY",
           tiers: [{ count: drops, amountLamports: perDropLamports }],
           centerLat: c.lat,
@@ -106,7 +107,7 @@ export function HideScreen() {
         </div>
 
         <div className="mt-6 text-center">
-          <div className="text-[48px] font-bold leading-none tracking-tight">{formatSol(totalLamports, { compact: true })}</div>
+          <div className="text-[48px] font-bold leading-none tracking-tight"><SolAmount lamports={totalLamports} /></div>
           <div className="mt-1 text-sm text-muted">
             {drops} {drops === 1 ? "drop" : "drops"} of {formatSol(perDropLamports)}
           </div>
@@ -116,7 +117,7 @@ export function HideScreen() {
           <label className="row-list block px-4 py-3">
             <span className="label">Amount (SOL)</span>
             <div className="flex items-center gap-1 text-2xl font-bold">
-              <span className="text-faint">◎</span>
+              <SolMark className="opacity-70" />
               <input className="w-full bg-transparent outline-none" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
             </div>
           </label>
@@ -150,7 +151,7 @@ export function HideScreen() {
         {error && <p className="mt-3 text-center text-sm text-danger">{error}</p>}
 
         <button className="btn btn-primary mt-5 w-full" disabled={busy || !valid} onClick={submit}>
-          <Lock size={16} /> Hide {formatSol(totalLamports, { compact: true })}
+          <Lock size={16} /> Hide <SolAmount lamports={totalLamports} />
         </button>
         <p className="mt-3 text-center text-xs text-faint">One drop per person. Wallet accounts pay the amount plus a 5% fee on the next screen (half of the fee fills the community drop pool). Unclaimed drops come back to you.</p>
       </div>

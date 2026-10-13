@@ -2,6 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { handler, json, parseBody, requireSession } from "@/lib/api";
 import { shortWallet } from "@/lib/drops";
+import { assertNotSpam } from "@/lib/moderate";
 
 const ROOM = "global";
 
@@ -36,6 +37,7 @@ export const POST = handler(async (req) => {
   // Light rate limit: 1 message / 1.5 s per user.
   const last = await prisma.message.findFirst({ where: { userId: session.userId }, orderBy: { createdAt: "desc" } });
   if (last && Date.now() - last.createdAt.getTime() < 1500) return json({ error: "Slow down" }, { status: 429 });
+  await assertNotSpam("chat", body);
   const m = await prisma.message.create({ data: { room: ROOM, userId: session.userId, body } });
   return json({ id: m.id });
 });

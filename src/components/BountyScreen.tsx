@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { SolAmount } from "./Sol";
 import Link from "next/link";
 import { ChevronLeft, MapPin, Clock, Video, Check, X as XIcon, ExternalLink, Shield, Paperclip } from "lucide-react";
 import { upload } from "@vercel/blob/client";
@@ -61,7 +62,7 @@ export function BountyScreen({ id }: { id: string }) {
           <ChevronLeft size={18} />
         </Link>
         <h1 className="min-w-0 flex-1 truncate text-xl font-bold">{b.title}</h1>
-        <div className="rounded-2xl bg-accent-soft px-3 py-1.5 text-lg font-bold text-accent">{formatSol(b.rewardLamports, { compact: true })}</div>
+        <div className="rounded-2xl bg-accent-soft px-3 py-1.5 text-lg font-bold text-accent"><SolAmount lamports={b.rewardLamports} /></div>
       </div>
 
       <div className="mt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-8">

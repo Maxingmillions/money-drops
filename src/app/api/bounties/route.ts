@@ -4,6 +4,7 @@ import { ApiError, handler, json, parseBody, requireSession } from "@/lib/api";
 import { bountyView } from "@/lib/bounties";
 import { requiresFunding, treasuryAddress } from "@/lib/solana";
 import { collectFee, feeFor, totalWithFee } from "@/lib/pool";
+import { assertNotSpam } from "@/lib/moderate";
 
 const Body = z.object({
   title: z.string().trim().min(3).max(80),
@@ -22,6 +23,7 @@ export const POST = handler(async (req) => {
   const session = await requireSession();
   const body = await parseBody(req, Body);
   if ((body.lat == null) !== (body.lng == null)) throw new ApiError(400, "Location needs both lat and lng");
+  await assertNotSpam("bounty", [body.title, body.description, body.areaName ?? ""].join("\n"));
   const me = await prisma.user.findUniqueOrThrow({ where: { id: session.userId } });
   const skip = !requiresFunding(me.loginMethod);
   const bounty = await prisma.bounty.create({

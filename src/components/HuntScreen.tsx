@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { SolAmount } from "./Sol";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X, Compass as CompassIcon } from "lucide-react";
@@ -73,7 +74,7 @@ export function HuntScreen({ dropId }: { dropId: string }) {
         </Link>
         <div className="flex-1 text-center">
           <div className="text-[15px] font-semibold">
-            {drop ? `Hunting ${formatSol(drop.amountLamports, { compact: true })}` : "Hunting"}
+            {drop ? `Hunting ${formatSol(drop.amountLamports)}` : "Hunting"}
           </div>
           <div className="text-xs text-muted">{drop?.campaign.areaName ?? drop?.campaign.title ?? ""}</div>
         </div>
@@ -129,7 +130,7 @@ export function HuntScreen({ dropId }: { dropId: string }) {
           <div className="mt-4 hidden w-full max-w-[420px] lg:block">
             {canClaim && (
               <button className="btn btn-primary w-full" onClick={() => router.push(`/claim/${dropId}`)}>
-                You&apos;re here · Claim {formatSol(drop!.amountLamports, { compact: true })}
+                You&apos;re here · Claim <SolAmount lamports={drop!.amountLamports} />
               </button>
             )}
           </div>
@@ -154,7 +155,7 @@ export function HuntScreen({ dropId }: { dropId: string }) {
       <div className="mt-auto pt-5 lg:hidden">
         {canClaim && (
           <button className="btn btn-primary w-full" onClick={() => router.push(`/claim/${dropId}`)}>
-            You&apos;re here · Claim {formatSol(drop!.amountLamports, { compact: true })}
+            You&apos;re here · Claim <SolAmount lamports={drop!.amountLamports} />
           </button>
         )}
       </div>

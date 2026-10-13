@@ -16,9 +16,11 @@
     "postinstall": "prisma generate && node scripts/copy-maplibre-worker.mjs",
     "dev:webpack": "next dev --webpack",
     "vercel-build": "node scripts/vercel-build.mjs",
-    "db:unseed": "tsx prisma/unseed.ts"
+    "db:unseed": "tsx prisma/unseed.ts",
+    "db:wipe": "tsx prisma/wipe.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
     "@prisma/client": "^6.19.3",
     "@privy-io/node": "^0.35.0",
     "@privy-io/react-auth": "^3.48.1",

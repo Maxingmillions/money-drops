@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { SolAmount } from "./Sol";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Plus, Crosshair, Sparkles, Eye, ShieldCheck, Compass, MapPin, Search } from "lucide-react";
@@ -81,9 +82,9 @@ export function MapScreen({ guest = false }: { guest?: boolean }) {
   const headline = selected?.campaign ?? drops[0]?.campaign ?? null;
   const huntsTotal = hunts.reduce((s, h) => s + h.remainingLamports, 0);
   const summary = zoomedOut
-    ? `${formatSol(huntsTotal, { compact: true })} hidden across ${hunts.length} hunts`
+    ? `${formatSol(huntsTotal)} hidden across ${hunts.length} hunts`
     : drops.length
-      ? `${formatSol(total, { compact: true })} in ${drops.length} drops in view`
+      ? `${formatSol(total)} in ${drops.length} drops in view`
       : "No drops in view · zoom out to see hunts";
 
   const mapDrops = drops.map((d) => ({
@@ -124,7 +125,7 @@ export function MapScreen({ guest = false }: { guest?: boolean }) {
                 >
                   <Coin size={30} />
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold">{formatSol(d.amountLamports, { compact: true })} drop</div>
+                    <div className="text-sm font-semibold"><SolAmount lamports={d.amountLamports} /> drop</div>
                     <div className="truncate text-xs text-muted">
                       {d.campaign.areaName ?? d.campaign.title} · {formatDistance(d.distanceM)}
                     </div>
@@ -138,7 +139,7 @@ export function MapScreen({ guest = false }: { guest?: boolean }) {
                 <li key={h.id} className="border-b border-line px-5 py-3 text-sm">
                   <div className="font-semibold">{h.title}</div>
                   <div className="text-xs text-muted">
-                    {formatSol(h.remainingLamports, { compact: true })} · {h.remaining} drops left
+                    <SolAmount lamports={h.remainingLamports} /> · {h.remaining} drops left
                   </div>
                 </li>
               ))}
@@ -254,7 +255,7 @@ function DropDetail({ drop, onHunt, guest = false }: { drop: PublicDrop; onHunt:
       <div className="flex items-center gap-3">
         <Coin size={44} />
         <div>
-          <div className="text-[22px] font-bold leading-tight">{formatSol(drop.amountLamports, { compact: true })} drop</div>
+          <div className="text-[22px] font-bold leading-tight"><SolAmount lamports={drop.amountLamports} /> drop</div>
           <div className="text-sm text-muted">
             {drop.campaign.areaName ? `${drop.campaign.areaName} · ` : ""}
             {Number.isFinite(drop.distanceM)
