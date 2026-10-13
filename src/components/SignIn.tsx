@@ -35,7 +35,7 @@ export function SignIn() {
         </div>
         <h1 className="mt-4 text-[40px] font-bold tracking-tight">Drops</h1>
         <p className="mt-1 max-w-[300px] text-center text-[17px] text-muted">
-          Money becomes a real-world treasure hunt. Hide USDC on Solana; strangers find it.
+          Money becomes a real-world treasure hunt. Hide SOL anywhere; strangers find it.
         </p>
       </section>
 
