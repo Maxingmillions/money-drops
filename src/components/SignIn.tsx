@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useIdentityToken, useLogin, usePrivy } from "@privy-io/react-auth";
 import { useWallets } from "@privy-io/react-auth/solana";
-import { Mail, Sparkles, FlaskConical, Smartphone, ExternalLink, KeyRound, Map as MapIcon, Target } from "lucide-react";
+import { Mail, Sparkles, FlaskConical, KeyRound, Map as MapIcon, Target } from "lucide-react";
+import { WalletSplitButton } from "./WalletSplitButton";
 import { SolCoin } from "./SolCoin";
 import { DropsTokenCard } from "./DropsToken";
 import { PRIVY_APP_ID } from "./Providers";
@@ -14,6 +14,7 @@ import { api, ClientError } from "@/lib/client";
 import { WALLET_APPS, isMobile, useSolanaWallets, type SolanaWallet } from "@/hooks/useSolanaWallets";
 
 const DEV_LOGIN_UI = process.env.NODE_ENV !== "production";
+const subscribeNever = () => () => {};
 
 function useFinishSignIn() {
   const router = useRouter();
@@ -72,6 +73,8 @@ export function SignIn() {
 /** Native Sign-In With Solana: pick a wallet, then an account if it has several. */
 function WalletButtons({ onDone }: { onDone: () => void }) {
   const { wallets, connect, signIn } = useSolanaWallets();
+  // Server renders the desktop copy; the client swaps to the phone copy after hydration.
+  const mobile = useSyncExternalStore(subscribeNever, isMobile, () => false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [choice, setChoice] = useState<{ wallet: SolanaWallet; accounts: string[] } | null>(null);
@@ -112,32 +115,21 @@ function WalletButtons({ onDone }: { onDone: () => void }) {
   // No wallet injected into this browser: on a phone, hand the page to a
   // wallet app's built-in browser; on desktop, point at the extensions.
   if (wallets.length === 0) {
-    const mobile = isMobile();
     return (
       <div className="space-y-2">
-        <p className="text-center text-xs text-muted">
-          {mobile ? "Open Drops inside your wallet app to sign in" : "No Solana wallet extension detected. Install one, then reload."}
+        <WalletSplitButton
+          options={WALLET_APPS.map((w) => ({ id: w.name, name: w.name, color: w.color }))}
+          defaultId="Phantom"
+          label={(w) => (mobile ? `Open in ${w.name}` : `Get ${w.name}`)}
+          onPick={(o) => {
+            const app = WALLET_APPS.find((w) => w.name === o.id)!;
+            if (mobile) window.location.assign(app.browse(window.location.href));
+            else window.open(app.install, "_blank", "noopener");
+          }}
+        />
+        <p className="text-center text-[11px] text-faint">
+          {mobile ? "Opens Drops inside the wallet app's browser so you can sign in." : "No wallet extension detected. Install one, then reload."} Any Solana wallet works.
         </p>
-        <div className="grid grid-cols-3 gap-2">
-          {WALLET_APPS.map((w) =>
-            mobile ? (
-              <button key={w.name} className="btn btn-ghost flex-col !gap-1 !py-3 text-sm" onClick={() => window.location.assign(w.browse(window.location.href))}>
-                <span className="grid h-8 w-8 place-items-center rounded-full text-white" style={{ background: w.color }}>
-                  <Smartphone size={16} />
-                </span>
-                {w.name}
-              </button>
-            ) : (
-              <a key={w.name} href={w.install} target="_blank" rel="noreferrer" className="btn btn-ghost flex-col !gap-1 !py-3 text-sm">
-                <span className="grid h-8 w-8 place-items-center rounded-full text-white" style={{ background: w.color }}>
-                  <ExternalLink size={14} />
-                </span>
-                {w.name}
-              </a>
-            ),
-          )}
-        </div>
-        <p className="text-center text-[11px] text-faint">Any Solana wallet works: Phantom, Solflare, Backpack, Glow, Coinbase Wallet and more.</p>
       </div>
     );
   }
@@ -164,19 +156,18 @@ function WalletButtons({ onDone }: { onDone: () => void }) {
     );
   }
 
+  const preferred = wallets.find((w) => /phantom/i.test(w.name)) ?? wallets[0];
   return (
     <div className="space-y-2">
-      <p className="text-center text-xs text-muted">
-        {wallets.length === 1 ? "Wallet detected · pick it to sign in" : `${wallets.length} wallets detected · pick one`}
-      </p>
-      <div className={wallets.length > 1 ? "grid grid-cols-2 gap-2" : "space-y-2"}>
-        {wallets.map((w) => (
-          <button key={w.id} className="btn btn-primary w-full" disabled={busy !== null} onClick={() => pick(w)}>
-            {w.icon ? <Image src={w.icon} alt="" width={20} height={20} className="rounded-md" unoptimized /> : <Smartphone size={18} />}
-            {busy === w.id ? "Check your wallet…" : wallets.length > 1 ? w.name : `Continue with ${w.name}`}
-          </button>
-        ))}
-      </div>
+      <WalletSplitButton
+        options={wallets.map((w) => ({ id: w.id, name: w.name, icon: w.icon }))}
+        defaultId={preferred.id}
+        busy={busy !== null}
+        onPick={(o) => {
+          const w = wallets.find((x) => x.id === o.id);
+          if (w) pick(w);
+        }}
+      />
       {error && <p className="text-center text-sm text-danger">{error}</p>}
     </div>
   );
