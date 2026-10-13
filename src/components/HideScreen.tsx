@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X, Lock, MapPin } from "lucide-react";
 import { DropMap } from "./DropMap";
+import { LocationSearch } from "./LocationSearch";
 import { Coin } from "./Coin";
 import { api } from "@/lib/client";
 import { formatUsd, type LatLng } from "@/lib/geo";
@@ -70,7 +71,7 @@ export function HideScreen() {
           circle={{ center: mapCenter, radiusM }}
           onTap={setCenter}
           followKey={`${mapCenter.lat},${mapCenter.lng}`}
-          attribution="bottom-right"
+          attribution="bottom-left"
         />
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center p-4 pt-[calc(env(safe-area-inset-top)+12px)] lg:hidden">
           <Link href="/home" className="icon-btn pointer-events-auto">
@@ -79,8 +80,17 @@ export function HideScreen() {
           <div className="flex-1 text-center text-[15px] font-semibold">Hide money</div>
           <div className="w-10" />
         </div>
-        <div className="pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)+60px)] flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-fg/85 px-3 py-1.5 text-xs font-semibold text-white lg:left-auto lg:right-4 lg:top-4 lg:translate-x-0">
-          <MapPin size={12} /> {center ? "Centre set" : "Tap the map to set the centre"}
+        <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top)+60px)] z-10 lg:left-4 lg:right-auto lg:top-4 lg:w-[380px]">
+          <LocationSearch
+            near={position}
+            onPick={(p) => {
+              setCenter({ lat: p.lat, lng: p.lng });
+              if (!areaName.trim()) setAreaName(p.name);
+            }}
+          />
+        </div>
+        <div className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-fg/85 px-3 py-1.5 text-xs font-semibold text-white lg:bottom-6">
+          <MapPin size={12} /> {center ? "Centre set · tap to move it" : "Search above or tap the map to set the centre"}
         </div>
       </div>
 

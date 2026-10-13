@@ -73,6 +73,9 @@ model Campaign {
   fundingTxSig String? @unique
   fundedAt     DateTime?
   refundTxSig  String?
+  /// Set when a mod takes the campaign down.
+  modNote      String?
+  refundedCents Int?
 
   createdAt DateTime @default(now())
 
@@ -146,6 +149,10 @@ model Bounty {
   status      String   @default("DRAFT")
   fundingTxSig String? @unique
   fundedAt    DateTime?
+  refundTxSig String?
+  refundedCents Int?
+  /// Set when a mod takes the bounty down.
+  modNote     String?
   createdAt   DateTime @default(now())
 
   submissions Submission[]

@@ -38,8 +38,12 @@ function campaignIsLive(c: { status: string; kind: string; startsAt: Date | null
   return true;
 }
 
-/** Hidden drops near `at`, with positions fuzzed until the hunter is close. */
-export async function nearbyDrops(at: LatLng, radiusM: number): Promise<PublicDrop[]> {
+/**
+ * Hidden drops within `radiusM` of `at` (the map viewport centre). Distances
+ * and reveals are computed from `user` (the hunter's real position) when
+ * given, so panning the map never leaks exact spots.
+ */
+export async function nearbyDrops(at: LatLng, radiusM: number, user: LatLng | null = at): Promise<PublicDrop[]> {
   const box = boundingBox(at, radiusM);
   const drops = await prisma.drop.findMany({
     where: {
@@ -59,8 +63,8 @@ export async function nearbyDrops(at: LatLng, radiusM: number): Promise<PublicDr
 
   return live
     .map((d) => {
-      const dist = distanceM(at, d);
-      const exact = dist <= d.campaign.revealRadiusM;
+      const dist = user ? distanceM(user, d) : Number.POSITIVE_INFINITY;
+      const exact = user ? dist <= d.campaign.revealRadiusM : false;
       const pos = exact ? { lat: d.lat, lng: d.lng } : fuzzPosition(d.id, d, d.campaign.searchRadiusM, d.campaign.revealRadiusM);
       const s = stats.get(d.campaignId)!;
       return {
@@ -85,8 +89,34 @@ export async function nearbyDrops(at: LatLng, radiusM: number): Promise<PublicDr
         },
       };
     })
-    .filter((d) => d.distanceM <= radiusM)
+    .filter((d) => distanceM(at, { lat: d.lat, lng: d.lng }) <= radiusM * 1.2)
     .sort((a, b) => a.distanceM - b.distanceM);
+}
+
+/** One bubble per live campaign for the zoomed-out world view. */
+export async function campaignOverview() {
+  const campaigns = await prisma.campaign.findMany({
+    where: { status: "ACTIVE" },
+    include: { creator: true, drops: { select: { status: true, amountCents: true } } },
+  });
+  const now = new Date();
+  return campaigns
+    .filter((c) => campaignIsLive(c, now))
+    .map((c) => {
+      const hidden = c.drops.filter((d) => d.status === "HIDDEN");
+      return {
+        id: c.id,
+        title: c.title,
+        areaName: c.areaName,
+        creator: c.creator.handle ?? shortWallet(c.creator.wallet),
+        lat: c.centerLat,
+        lng: c.centerLng,
+        radiusM: c.radiusM,
+        remaining: hidden.length,
+        remainingCents: hidden.reduce((s, d) => s + d.amountCents, 0),
+      };
+    })
+    .filter((c) => c.remaining > 0);
 }
 
 export async function campaignStats(campaignIds: string[]) {

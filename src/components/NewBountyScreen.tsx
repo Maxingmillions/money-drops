@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X, Lock, MapPin } from "lucide-react";
 import { DropMap } from "./DropMap";
+import { LocationSearch } from "./LocationSearch";
 import { api } from "@/lib/client";
 import { formatUsd, type LatLng } from "@/lib/geo";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -60,7 +61,7 @@ export function NewBountyScreen() {
   return (
     <main className="min-h-dvh pb-28 lg:grid lg:min-h-0 lg:grid-cols-[480px_minmax(0,1fr)] lg:pb-0">
       <div className={`relative h-[220px] w-full overflow-hidden rounded-b-[28px] lg:order-2 lg:h-dvh lg:rounded-none ${useLocation ? "" : "opacity-40"}`}>
-        <DropMap center={mapCenter} zoom={14} me={position} circle={useLocation ? { center: mapCenter, radiusM } : null} onTap={(p) => useLocation && setCenter(p)} followKey={`${mapCenter.lat},${mapCenter.lng}`} attribution="bottom-right" />
+        <DropMap center={mapCenter} zoom={14} me={position} circle={useLocation ? { center: mapCenter, radiusM } : null} onTap={(p) => useLocation && setCenter(p)} followKey={`${mapCenter.lat},${mapCenter.lng}`} attribution="bottom-left" />
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center p-4 pt-[calc(env(safe-area-inset-top)+12px)] lg:hidden">
           <Link href="/bounties" className="icon-btn pointer-events-auto">
             <X size={18} />
@@ -69,9 +70,20 @@ export function NewBountyScreen() {
           <div className="w-10" />
         </div>
         {useLocation && (
-          <div className="pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)+60px)] flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-fg/85 px-3 py-1.5 text-xs font-semibold text-white lg:left-auto lg:right-4 lg:top-4 lg:translate-x-0">
-            <MapPin size={12} /> {center ? "Location set" : "Tap the map to set the location"}
-          </div>
+          <>
+            <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top)+60px)] z-10 lg:left-4 lg:right-auto lg:top-4 lg:w-[380px]">
+              <LocationSearch
+                near={position}
+                onPick={(p) => {
+                  setCenter({ lat: p.lat, lng: p.lng });
+                  if (!areaName.trim()) setAreaName(p.name);
+                }}
+              />
+            </div>
+            <div className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-fg/85 px-3 py-1.5 text-xs font-semibold text-white lg:bottom-6">
+              <MapPin size={12} /> {center ? "Location set · tap to move it" : "Search above or tap the map"}
+            </div>
+          </>
         )}
       </div>
 

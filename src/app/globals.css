@@ -282,8 +282,8 @@ button:active:not(:disabled),
   will-change: transform;
 }
 .md-marker .coin {
-  width: 30px;
-  height: 30px;
+  width: calc(30px * var(--mk, 1));
+  height: calc(30px * var(--mk, 1));
   border-radius: 999px;
   background: radial-gradient(circle at 35% 30%, #3b1d7a, #15092f);
   box-shadow: 0 4px 10px -3px rgb(80 30 160 / 0.6), inset 0 0 0 2px var(--coin-1);
@@ -297,8 +297,8 @@ button:active:not(:disabled),
   height: 60%;
 }
 .md-marker.big .coin {
-  width: 44px;
-  height: 44px;
+  width: calc(44px * var(--mk, 1));
+  height: calc(44px * var(--mk, 1));
 }
 .md-marker.selected .coin,
 .md-marker:hover .coin {
@@ -364,9 +364,27 @@ button:active:not(:disabled),
   align-items: center;
   gap: 6px;
   font-weight: 700;
-  font-size: 13px;
-  box-shadow: var(--shadow);
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: var(--shadow), 0 0 0 2px var(--accent-soft);
   cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.md-cluster:hover {
+  transform: scale(1.06);
+}
+.md-cluster .coin svg {
+  width: 60%;
+  height: 60%;
+}
+.md-hunt {
+  padding: 6px 12px 6px 6px;
+  font-size: 13px;
+  box-shadow: var(--shadow), 0 0 0 3px rgb(139 61 255 / 0.25);
+}
+.md-hunt .coin {
+  width: 28px;
+  height: 28px;
 }
 .md-cluster .coin {
   width: 22px;

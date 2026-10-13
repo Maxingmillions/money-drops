@@ -11,7 +11,8 @@ A mobile-first web app (installable PWA, also works on desktop) built with Next.
 **Hunters**
 - Sign in with Phantom, Solflare, Backpack or any Wallet Standard Solana wallet (native Sign-In With Solana, no third party). Google, Apple and email sign-in with an auto-created Solana wallet are available once a Privy app is configured.
 - Wallet home: total found, nearby-drop banner, claim history with on-chain receipts.
-- Map of nearby drops as spinning Solana coins. Each hidden drop shows a search circle (default 80 m) rather than a point: the real spot is somewhere inside, and the exact location only appears once you're within the reveal radius (default 30 m), so hunters have to explore.
+- Map of drops as spinning Solana coins, with a zoom-aware system: at world level you see one bubble per hunt, zooming in splits them into clusters, and up close the individual coins appear and scale up. The map fetches whatever is in view.
+- Address search on the Hide and Post-bounty pickers (OpenStreetMap geocoding). Each hidden drop shows a search circle (default 80 m) rather than a point: the real spot is somewhere inside, and the exact location only appears once you're within the reveal radius (default 30 m), so hunters have to explore.
 - Works as a phone app (installable PWA, bottom nav, full-screen map) and a desktop app (sidebar, map with a side panel, two-column forms).
 - $DROPS token card and DexScreener chart page, live as soon as `NEXT_PUBLIC_DROPS_TOKEN` is set to the mint address.
 - Hunt screen: live distance, compass needle, warmer/colder, mini map.
@@ -24,7 +25,7 @@ A mobile-first web app (installable PWA, also works on desktop) built with Next.
 **Bounties**
 - Anyone posts a task with a USDC reward, optional place and radius, deadline and number of winners. The reward is held in escrow.
 - Hunters submit a video link as proof. Mods review a queue, approve or reject with a note, and approval pays the reward to the submitter's wallet.
-- Mods: wallets in `ADMIN_WALLETS` become admins on sign-in; admins can promote mods in the database (`role = MOD`).
+- Mod panel at `/mod`: review queue, every live drop and bounty with a "take down" action that closes the post and refunds the creator's unclaimed money, and a team tab where admins add or remove mods by wallet. Wallets in `ADMIN_WALLETS` become admins on sign-in.
 
 **Chat**
 - A global room (polling every 3 s, no extra services). Mods get a shield badge.
@@ -100,7 +101,8 @@ Fund the treasury with a little SOL for fees (`solana airdrop 1 <address> --url 
 | `npm run typecheck` / `lint` | Type and lint checks |
 | `npm run db:push` | Apply the Prisma schema to the database |
 | `npm run vercel-build` | What Vercel runs: schema push, optional seed, build |
-| `npm run db:seed` | Seed the demo hunt |
+| `npm run db:seed` | Seed demo content: hunts in six cities, bounties, chat, claims, a demo mod |
+| `npm run db:unseed` | Remove everything the seed created |
 | `npm run db:studio` | Browse the database |
 | `npm run treasury:new` | Generate an escrow keypair |
 

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Plus, Crosshair, Sparkles, Eye, ShieldCheck, Compass, MapPin, Search } from "lucide-react";
-import { DropMap } from "./DropMap";
+import { DropMap, type MapHunt, type Viewport } from "./DropMap";
 import { Coin } from "./Coin";
 import { api } from "@/lib/client";
 import { formatDistance, formatUsd, walkMinutes, type LatLng } from "@/lib/geo";
@@ -23,27 +23,64 @@ export function MapScreen() {
   const [simMode, setSimMode] = useState(false);
   const [followKey, setFollowKey] = useState(0);
 
+  const [viewport, setViewport] = useState<Viewport | null>(null);
+  const [hunts, setHunts] = useState<MapHunt[]>([]);
+
   const center = position ?? FALLBACK;
-  const lat = position?.lat ?? FALLBACK.lat;
-  const lng = position?.lng ?? FALLBACK.lng;
+  const ulat = position?.lat;
+  const ulng = position?.lng;
+
+  // Drops for whatever is in view (debounced on pan/zoom, refreshed every 8 s).
+  const vLat = viewport?.center.lat;
+  const vLng = viewport?.center.lng;
+  const vRadius = viewport ? Math.min(60_000, Math.max(300, Math.round(viewport.radiusM))) : null;
+  const zoomedOut = (viewport?.zoom ?? 15) < 9;
   useEffect(() => {
+    if (vLat == null || vLng == null || vRadius == null) return;
+    if (zoomedOut) {
+      const clear = setTimeout(() => setDrops([]), 0);
+      return () => clearTimeout(clear);
+    }
     let cancelled = false;
+    const who = ulat != null && ulng != null ? `&ulat=${ulat}&ulng=${ulng}` : "&user=none";
     const refresh = () =>
-      api<{ drops: PublicDrop[] }>(`/api/drops/nearby?lat=${lat}&lng=${lng}&radius=4000`)
+      api<{ drops: PublicDrop[] }>(`/api/drops/nearby?lat=${vLat}&lng=${vLng}&radius=${vRadius}${who}`)
         .then((r) => !cancelled && setDrops(r.drops))
         .catch(() => {});
-    refresh();
+    const first = setTimeout(refresh, 250);
     const t = setInterval(refresh, 8000);
+    return () => {
+      cancelled = true;
+      clearTimeout(first);
+      clearInterval(t);
+    };
+  }, [vLat, vLng, vRadius, zoomedOut, ulat, ulng]);
+
+  // One bubble per live hunt for the zoomed-out view.
+  useEffect(() => {
+    let cancelled = false;
+    const pull = () =>
+      api<{ campaigns: MapHunt[] }>("/api/drops/overview")
+        .then((r) => !cancelled && setHunts(r.campaigns))
+        .catch(() => {});
+    pull();
+    const t = setInterval(pull, 30_000);
     return () => {
       cancelled = true;
       clearInterval(t);
     };
-  }, [lat, lng]);
+  }, []);
 
   const selected = useMemo(() => drops.find((d) => d.id === selectedId) ?? null, [drops, selectedId]);
   const bigAmount = useMemo(() => (drops.length ? Math.max(...drops.map((d) => d.amountCents)) : undefined), [drops]);
   const total = drops.reduce((s, d) => s + d.amountCents, 0);
   const headline = selected?.campaign ?? drops[0]?.campaign ?? null;
+  const huntsTotal = hunts.reduce((s, h) => s + h.remainingCents, 0);
+  const summary = zoomedOut
+    ? `${formatUsd(huntsTotal, { compact: true })} hidden across ${hunts.length} hunts`
+    : drops.length
+      ? `${formatUsd(total, { compact: true })} in ${drops.length} drops in view`
+      : "No drops in view · zoom out to see hunts";
 
   const mapDrops = drops.map((d) => ({
     id: d.id,
@@ -60,9 +97,7 @@ export function MapScreen() {
       <aside className="hidden h-dvh flex-col border-r border-line bg-elev lg:flex">
         <div className="border-b border-line p-5">
           <h1 className="text-xl font-bold">Hunt</h1>
-          <p className="text-sm text-muted">
-            {drops.length ? `${formatUsd(total, { compact: true })} in ${drops.length} drops within 4 km` : "No drops within 4 km"}
-          </p>
+          <p className="text-sm text-muted">{summary}</p>
           {error && !position && <p className="mt-2 text-xs text-danger">{error}</p>}
         </div>
         {selected ? (
@@ -91,13 +126,22 @@ export function MapScreen() {
                 </button>
               </li>
             ))}
-            {drops.length === 0 && (
+            {zoomedOut &&
+              hunts.map((h) => (
+                <li key={h.id} className="border-b border-line px-5 py-3 text-sm">
+                  <div className="font-semibold">{h.title}</div>
+                  <div className="text-xs text-muted">
+                    {formatUsd(h.remainingCents, { compact: true })} · {h.remaining} drops left
+                  </div>
+                </li>
+              ))}
+            {drops.length === 0 && !zoomedOut && (
               <li className="px-5 py-8 text-center text-sm text-muted">
-                Nothing nearby yet.{" "}
+                Nothing in view.{" "}
                 <Link href="/hide" className="text-accent">
                   Hide some money
-                </Link>{" "}
-                or teleport with the pin button.
+                </Link>
+                , zoom out to find hunts, or teleport with the pin button.
               </li>
             )}
           </ul>
@@ -111,9 +155,11 @@ export function MapScreen() {
           center={center}
           zoom={15}
           drops={mapDrops}
+          hunts={hunts}
           me={position}
           selectedId={selectedId}
           onSelect={setSelectedId}
+          onViewport={setViewport}
           bigAmountCents={bigAmount}
           followKey={followKey}
           onTap={(p) => {
@@ -133,9 +179,7 @@ export function MapScreen() {
             </div>
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold">{headline?.title ?? "Nearby drops"}</div>
-              <div className="truncate text-xs text-muted">
-                {drops.length ? `${formatUsd(total, { compact: true })} · ${drops.length} drops around you` : "No drops within 4 km"}
-              </div>
+              <div className="truncate text-xs text-muted">{summary}</div>
             </div>
           </div>
           <Link href="/hide" className="icon-btn pointer-events-auto">
