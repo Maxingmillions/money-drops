@@ -24,20 +24,32 @@ function secret() {
 
 export type Session = { userId: string; wallet: string };
 
-export async function createSession(session: Session) {
-  const token = await new SignJWT(session)
+export const SESSION_COOKIE = COOKIE;
+
+export function sessionCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: MAX_AGE_S,
+  };
+}
+
+export async function sessionToken(session: Session) {
+  return new SignJWT(session)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${MAX_AGE_S}s`)
     .sign(secret());
-  (await cookies()).set(COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: MAX_AGE_S,
-  });
 }
+
+export async function createSession(session: Session) {
+  (await cookies()).set(COOKIE, await sessionToken(session), sessionCookieOptions());
+}
+
+/** The signing secret, shared with short-lived OAuth state tokens. */
+export const sessionSecret = secret;
 
 export async function clearSession() {
   (await cookies()).delete(COOKIE);

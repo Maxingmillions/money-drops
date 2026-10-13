@@ -58,6 +58,8 @@ A mobile-first web app (installable PWA, also works on desktop) built with Next.
    | `NEXT_PUBLIC_DEV_LOCATION` | `true` (optional: tap the map to teleport) |
    | `SEED_DEMO` | `true` (optional: seeds demo content on build; leave unset for an empty site) |
    | `ANTHROPIC_API_KEY` | optional: turns on AI spam moderation for chat, bounties and hidden money |
+   | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | optional: Google sign-in (see below) |
+   | `APPLE_CLIENT_ID` | optional: Apple sign-in (see below) |
    | `ADMIN_WALLETS` | your wallet address, so you can review bounties and delete posts |
    | `NEXT_PUBLIC_TREASURY_ADDRESS` / `TREASURY_SECRET_KEY` | escrow wallet (`npm run treasury:new`); set `DEV_SKIP_FUNDING` to `false` so wallet accounts really pay |
    | `BLOB_READ_WRITE_TOKEN` | set automatically by the linked Vercel Blob store; needed for proof uploads |
@@ -138,6 +140,16 @@ src/proxy.ts              redirects signed-out users to /sign-in
 - Anti-spoofing: GPS plausibility checks, speed limits between claims, device attestation.
 - Clustering on the map at low zoom, push notifications when a drop is nearby.
 - PostGIS for geo queries at scale, refunds for ended event drops, creator analytics.
+
+## Google and Apple sign-in
+
+Both run as plain OpenID Connect redirects (`src/lib/oauth.ts`), no auth service in between. New social accounts get a custodial Solana wallet like email accounts; an existing email account with the same verified address is linked instead of duplicated. Buttons appear on the sign-in page only when the provider is configured.
+
+**Google** (5 minutes): in [Google Cloud Console](https://console.cloud.google.com/apis/credentials) create an OAuth client ID of type Web application. Add `https://money-drops.vercel.app/api/auth/google/callback` (and `http://localhost:3000/api/auth/google/callback` for local dev) as an authorised redirect URI. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
+**Apple** (needs a paid Apple Developer account): in [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/identifiers) create an App ID with "Sign in with Apple", then a Services ID (this is the client id) with Sign in with Apple enabled, domain `money-drops.vercel.app` and return URL `https://money-drops.vercel.app/api/auth/apple/callback`. Set `APPLE_CLIENT_ID` to the Services ID. No private key is needed: the app uses the hybrid flow and verifies Apple's ID token directly. Apple only returns the user's name on the first sign-in, and may give a private relay email.
+
+If redirect URIs come out wrong behind a proxy, set `APP_URL` to the public origin.
 
 ## Spam moderation
 

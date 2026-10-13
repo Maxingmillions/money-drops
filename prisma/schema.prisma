@@ -26,6 +26,9 @@ model User {
   /// Privy DID (did:privy:...). Null for dev-login users.
   privyId   String?  @unique
   email     String?  @unique
+  /// OAuth subject ids for social sign-in.
+  googleId  String?  @unique
+  appleId   String?  @unique
   /// bcrypt hash for email + password accounts.
   passwordHash String?
   /// Encrypted secret key of the custodial wallet we created for accounts
