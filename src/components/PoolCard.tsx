@@ -70,8 +70,8 @@ export function PoolCard({ compact = false }: { compact?: boolean }) {
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-        <Stat label="Fees collected" value={pool ? formatSol(pool.feesCollectedLamports) : "—"} Icon={Percent} />
-        <Stat label="Dropped so far" value={pool ? formatSol(pool.droppedLamports) : "—"} Icon={ArrowDownToLine} />
+        <Stat label="Fees" value={pool ? formatSol(pool.feesCollectedLamports) : "—"} Icon={Percent} />
+        <Stat label="Dropped" value={pool ? formatSol(pool.droppedLamports) : "—"} Icon={ArrowDownToLine} />
         <Stat label="Next drop" value={mm != null ? `${mm}:${String(ss).padStart(2, "0")}` : "—"} Icon={Clock} />
       </div>
       <p className="mt-2 text-[11px] text-faint">Every 15 minutes the pool scatters random drops within a few miles of where people are hunting.</p>

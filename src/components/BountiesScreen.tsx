@@ -55,8 +55,8 @@ export function BountiesScreen({ isMod, guest = false }: { isMod: boolean; guest
             </Link>
           )}
           {!guest && isMod && (
-            <Link href="/mod" className="btn btn-secondary !px-4 !py-2.5 text-sm">
-              <Shield size={16} /> Review
+            <Link href="/mod" className="btn btn-secondary !px-3 !py-2.5 text-sm sm:!px-4" aria-label="Review queue">
+              <Shield size={16} /> <span className="hidden sm:inline">Review</span>
             </Link>
           )}
           {!guest && (

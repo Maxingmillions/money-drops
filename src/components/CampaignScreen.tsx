@@ -5,6 +5,7 @@ import { SolAmount } from "./Sol";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { DropMap } from "./DropMap";
+import { MobileBar } from "./MobileBar";
 import { Coin } from "./Coin";
 import { FundWithWallet } from "./FundWithWallet";
 import { EndPostButton } from "./EndPostButton";
@@ -64,7 +65,8 @@ export function CampaignScreen({ id }: { id: string }) {
 
   return (
     <main className="min-h-dvh pb-28 lg:grid lg:min-h-0 lg:grid-cols-[480px_minmax(0,1fr)] lg:pb-0">
-      <div className="relative h-[220px] overflow-hidden rounded-b-[28px] lg:order-2 lg:h-dvh lg:rounded-none">
+      <MobileBar href="/home" title={c.title} icon={<ChevronLeft size={18} />} />
+      <div className="relative mx-3 h-[240px] overflow-hidden rounded-[28px] lg:order-2 lg:mx-0 lg:h-dvh lg:rounded-none">
         <DropMap
           center={{ lat: c.centerLat, lng: c.centerLng }}
           zoom={14}
@@ -73,13 +75,6 @@ export function CampaignScreen({ id }: { id: string }) {
           circle={{ center: { lat: c.centerLat, lng: c.centerLng }, radiusM: c.radiusM }}
           attribution="bottom-right"
         />
-        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center p-4 pt-[calc(env(safe-area-inset-top)+12px)] lg:hidden">
-          <Link href="/home" className="icon-btn pointer-events-auto">
-            <ChevronLeft size={18} />
-          </Link>
-          <div className="flex-1 truncate text-center text-[15px] font-semibold">{c.title}</div>
-          <div className="w-10" />
-        </div>
       </div>
       <div className="px-5 lg:order-1 lg:h-dvh lg:overflow-y-auto lg:border-r lg:border-line lg:bg-elev lg:px-8 lg:py-8">
         <div className="hidden items-center lg:flex">

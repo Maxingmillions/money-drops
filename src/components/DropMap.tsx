@@ -140,6 +140,10 @@ export function DropMap({
       attributionControl: false,
     });
     m.addControl(new AttributionControl({ compact: true }), attribution);
+    // MapLibre opens the compact credit on first layout; start it collapsed (the "i" button expands it).
+    const collapseCredit = () => m.getContainer().querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
+    m.once("load", collapseCredit);
+    m.once("idle", collapseCredit);
 
     const emitViewport = () => {
       const b = m.getBounds();

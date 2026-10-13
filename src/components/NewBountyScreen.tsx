@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X, Lock, MapPin } from "lucide-react";
 import { DropMap } from "./DropMap";
+import { MobileBar } from "./MobileBar";
 import { LocationSearch } from "./LocationSearch";
 import { api } from "@/lib/client";
 import { formatSol, solToLamports, type LatLng } from "@/lib/geo";
@@ -63,18 +64,12 @@ export function NewBountyScreen() {
 
   return (
     <main className="min-h-dvh pb-28 lg:grid lg:min-h-0 lg:grid-cols-[480px_minmax(0,1fr)] lg:pb-0">
-      <div className={`relative h-[220px] w-full overflow-hidden rounded-b-[28px] lg:order-2 lg:h-dvh lg:rounded-none ${useLocation ? "" : "opacity-40"}`}>
-        <DropMap center={mapCenter} zoom={14} me={position} circle={useLocation ? { center: mapCenter, radiusM: clampedRadius } : null} onTap={(p) => useLocation && setCenter(p)} followKey={`${mapCenter.lat},${mapCenter.lng}`} attribution="bottom-left" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center p-4 pt-[calc(env(safe-area-inset-top)+12px)] lg:hidden">
-          <Link href="/bounties" className="icon-btn pointer-events-auto">
-            <X size={18} />
-          </Link>
-          <div className="flex-1 text-center text-[15px] font-semibold">Post a bounty</div>
-          <div className="w-10" />
-        </div>
+      <MobileBar href="/bounties" title="Post a bounty" icon={<X size={18} />} />
+      <div className={`relative mx-3 h-[260px] overflow-hidden rounded-[28px] lg:order-2 lg:mx-0 lg:h-dvh lg:rounded-none ${useLocation ? "" : "opacity-40"}`}>
+        <DropMap center={mapCenter} zoom={14} me={position} circle={useLocation ? { center: mapCenter, radiusM: clampedRadius } : null} onTap={(p) => useLocation && setCenter(p)} followKey={`${mapCenter.lat},${mapCenter.lng}`} attribution="bottom-right" />
         {useLocation && (
           <>
-            <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top)+60px)] z-10 lg:left-4 lg:right-auto lg:top-4 lg:w-[380px]">
+            <div className="absolute inset-x-3 top-3 z-10 lg:left-4 lg:right-auto lg:top-4 lg:w-[380px]">
               <LocationSearch
                 near={position}
                 onPick={(p) => {
@@ -83,8 +78,8 @@ export function NewBountyScreen() {
                 }}
               />
             </div>
-            <div className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-fg/85 px-3 py-1.5 text-xs font-semibold text-white lg:bottom-6">
-              <MapPin size={12} /> {center ? "Location set · tap to move it" : "Search above or tap the map"}
+            <div className="pointer-events-none absolute bottom-3 left-3 flex max-w-[calc(100%-56px)] items-center gap-1.5 rounded-full bg-fg/85 px-3 py-1.5 text-[11px] font-semibold text-white lg:bottom-6 lg:left-1/2 lg:-translate-x-1/2 lg:text-xs">
+              <MapPin size={12} className="shrink-0" /> <span className="truncate">{center ? "Location set · tap to move it" : "Search above or tap the map"}</span>
             </div>
           </>
         )}

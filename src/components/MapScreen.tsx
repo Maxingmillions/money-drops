@@ -201,12 +201,12 @@ export function MapScreen({ guest = false }: { guest?: boolean }) {
         </div>
 
         {/* Mobile search */}
-        <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top)+64px)] z-10 lg:hidden">
+        <div className="absolute inset-x-4 top-[calc(env(safe-area-inset-top)+78px)] z-10 lg:hidden">
           <LocationSearch near={position} placeholder="Search a city, address or place" onPick={jumpTo} />
         </div>
 
         {/* Controls */}
-        <div className="absolute right-4 top-[calc(env(safe-area-inset-top)+116px)] z-10 flex flex-col gap-2 lg:top-4">
+        <div className="absolute right-4 top-[calc(env(safe-area-inset-top)+134px)] z-10 flex flex-col gap-2 lg:top-4">
           <button className="icon-btn" aria-label="Centre on me" title="Centre on me" onClick={() => setFollowKey((k) => k + 1)}>
             <Crosshair size={18} />
           </button>
@@ -225,12 +225,12 @@ export function MapScreen({ guest = false }: { guest?: boolean }) {
         </div>
 
         {simMode && (
-          <div className="absolute left-1/2 top-[calc(env(safe-area-inset-top)+116px)] z-10 -translate-x-1/2 rounded-full bg-fg px-3 py-1.5 text-xs font-semibold text-white lg:top-4">
+          <div className="absolute left-1/2 top-[calc(env(safe-area-inset-top)+134px)] z-10 -translate-x-1/2 rounded-full bg-fg px-3 py-1.5 text-xs font-semibold text-white lg:top-4">
             Tap the map to move yourself
           </div>
         )}
         {error && !position && (
-          <div className="absolute left-4 right-4 top-[calc(env(safe-area-inset-top)+116px)] z-10 rounded-2xl bg-white/90 p-3 text-center text-xs text-muted shadow lg:hidden">
+          <div className="absolute left-4 right-4 top-[calc(env(safe-area-inset-top)+134px)] z-10 rounded-2xl bg-white/90 p-3 text-center text-xs text-muted shadow lg:hidden">
             {error}
           </div>
         )}
