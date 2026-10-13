@@ -6,10 +6,18 @@ import { prisma } from "./db";
 const COOKIE = "md_session";
 const MAX_AGE_S = 60 * 60 * 24 * 7;
 
+let warned = false;
 function secret() {
-  const s = process.env.SESSION_SECRET;
+  let s = process.env.SESSION_SECRET;
   if (!s || s.length < 16) {
-    throw new Error("SESSION_SECRET must be set to a long random string");
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("SESSION_SECRET must be set to a long random string");
+    }
+    if (!warned) {
+      console.warn("SESSION_SECRET not set; using an insecure dev default. Run `npm run setup` to create .env.");
+      warned = true;
+    }
+    s = "money-drops-insecure-dev-secret";
   }
   return new TextEncoder().encode(s);
 }

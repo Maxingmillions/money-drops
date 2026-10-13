@@ -30,7 +30,7 @@ export function Providers({ children }: { children: ReactNode }) {
       config={{
         appearance: {
           theme: "light",
-          accentColor: "#2f6fed",
+          accentColor: "#8b3dff",
           walletChainType: "solana-only",
           showWalletLoginFirst: true,
           landingHeader: "Money Drops",

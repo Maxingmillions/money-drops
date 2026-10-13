@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { X, Share2, Check } from "lucide-react";
 import { Coin } from "./Coin";
+import { SolCoin } from "./SolCoin";
 import { api } from "@/lib/client";
 import { formatUsd } from "@/lib/geo";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -108,9 +109,7 @@ export function ClaimScreen({ dropId }: { dropId: string }) {
       {!result ? (
         <>
           <div className="absolute inset-x-0 top-[22%] z-10 flex flex-col items-center">
-            <div className="float">
-              <Coin size={150} />
-            </div>
+            <SolCoin size={210} />
             <div className="mt-6 h-2 w-36 rounded-full bg-white/30 blur-[2px]" />
             <div className="mt-8 text-center text-white drop-shadow">
               <div className="text-[26px] font-bold">
@@ -142,7 +141,7 @@ export function ClaimScreen({ dropId }: { dropId: string }) {
                   cy="50"
                   r="46"
                   fill="none"
-                  stroke="#2f6fed"
+                  stroke="#8b3dff"
                   strokeWidth="4"
                   strokeLinecap="round"
                   strokeDasharray={`${progress * 289} 289`}
@@ -156,8 +155,8 @@ export function ClaimScreen({ dropId }: { dropId: string }) {
         </>
       ) : (
         <div className="absolute inset-x-0 bottom-0 z-10 px-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
-          <div className="relative mx-auto -mb-10 w-fit">
-            <Coin size={84} />
+          <div className="relative mx-auto -mb-12 w-fit">
+            <SolCoin size={110} />
           </div>
           <div className="card px-5 pb-5 pt-12 text-center">
             <div className="text-[24px] font-bold">You found {formatUsd(result.amountCents, { compact: true })}</div>

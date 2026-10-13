@@ -2,14 +2,19 @@
 //
 // Money amounts are stored as integer USDC cents (1 USDC = 100 cents).
 // On-chain USDC has 6 decimals, so cents * 10_000 = base units.
+//
+// Database: Postgres (Neon on Vercel, or any Postgres locally).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Direct (non-pooled) connection for `prisma db push` / migrations.
+  // Neon's Vercel integration sets both variables; locally they can be the same.
+  directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 model User {

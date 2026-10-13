@@ -5,11 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useIdentityToken, useLogin, usePrivy } from "@privy-io/react-auth";
 import { useWallets } from "@privy-io/react-auth/solana";
 import { Wallet, Mail, Sparkles, FlaskConical } from "lucide-react";
-import { Coin } from "./Coin";
+import { SolCoin } from "./SolCoin";
 import { PRIVY_APP_ID } from "./Providers";
 import { api, ClientError } from "@/lib/client";
 
-const DEV_LOGIN_UI = process.env.NODE_ENV !== "production";
+const DEV_LOGIN_UI = process.env.NEXT_PUBLIC_DEV_LOGIN === "true" || process.env.NODE_ENV !== "production";
 
 export function SignIn() {
   return PRIVY_APP_ID ? <PrivySignIn /> : <DevOnlySignIn />;
@@ -18,9 +18,7 @@ export function SignIn() {
 function Hero() {
   return (
     <div className="flex flex-col items-center text-center">
-      <div className="float">
-        <Coin size={132} />
-      </div>
+      <SolCoin size={190} />
       <h1 className="mt-8 text-[40px] font-bold tracking-tight">Money Drops</h1>
       <p className="mt-2 max-w-[300px] text-[17px] text-muted">
         Money becomes a real-world treasure hunt.
@@ -141,10 +139,13 @@ function DevOnlySignIn() {
       <div className="space-y-3">
         <div className="card p-4 text-sm text-muted">
           Wallet, Google and Apple sign-in need a Privy app id. Add{" "}
-          <code className="font-mono text-xs">NEXT_PUBLIC_PRIVY_APP_ID</code> to{" "}
-          <code className="font-mono text-xs">.env</code> to enable them.
+          <code className="font-mono text-xs">NEXT_PUBLIC_PRIVY_APP_ID</code> to the environment to enable them.
         </div>
-        <DevButton onDone={finish} />
+        {DEV_LOGIN_UI ? (
+          <DevButton onDone={finish} />
+        ) : (
+          <p className="text-center text-xs text-faint">Sign-in isn&apos;t configured on this deployment yet.</p>
+        )}
       </div>
     </Frame>
   );
@@ -171,7 +172,7 @@ function DevButton({ onDone }: { onDone: () => void }) {
           }
         }}
       >
-        <FlaskConical size={18} /> Dev: continue as test hunter
+        <FlaskConical size={18} /> Continue as test hunter
       </button>
       {error && <p className="mt-2 text-center text-sm text-danger">{error}</p>}
     </div>

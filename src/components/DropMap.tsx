@@ -87,13 +87,13 @@ export function DropMap({
         id: "circle-fill",
         type: "fill",
         source: "circle",
-        paint: { "fill-color": "#2f6fed", "fill-opacity": 0.12 },
+        paint: { "fill-color": "#8b3dff", "fill-opacity": 0.12 },
       });
       m.addLayer({
         id: "circle-line",
         type: "line",
         source: "circle",
-        paint: { "line-color": "#2f6fed", "line-opacity": 0.6, "line-width": 1.5 },
+        paint: { "line-color": "#8b3dff", "line-opacity": 0.6, "line-width": 1.5 },
       });
     });
     m.on("click", (e: MapMouseEvent) => onTapRef.current?.({ lat: e.lngLat.lat, lng: e.lngLat.lng }));

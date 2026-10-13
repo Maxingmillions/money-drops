@@ -14,12 +14,14 @@
     "treasury:new": "tsx scripts/new-treasury.ts",
     "setup": "node scripts/ensure-env.mjs && npm run db:push && npm run db:seed",
     "postinstall": "prisma generate && node scripts/copy-maplibre-worker.mjs",
-    "dev:webpack": "next dev --webpack"
+    "dev:webpack": "next dev --webpack",
+    "vercel-build": "node scripts/vercel-build.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "@privy-io/node": "^0.35.0",
     "@privy-io/react-auth": "^3.48.1",
+    "@react-three/fiber": "^9.8.1",
     "@solana-program/memo": "^0.10.0",
     "@solana-program/system": "^0.10.0",
     "@solana-program/token": "^0.9.0",
@@ -34,6 +36,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
+    "three": "^0.186.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -41,6 +44,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.186.0",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
     "prisma": "^6.19.3",

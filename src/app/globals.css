@@ -9,14 +9,14 @@
   --fg-muted: #64748b;
   --fg-faint: #94a3b8;
   --line: #e2e8f0;
-  --accent: #2f6fed;
-  --accent-strong: #1d5ce0;
-  --accent-soft: #e6eeff;
-  --success: #16a34a;
-  --success-soft: #dcfce7;
+  --accent: #8b3dff;
+  --accent-strong: #7a2bf0;
+  --accent-soft: #f1e8ff;
+  --success: #0e9f6e;
+  --success-soft: #dcfbea;
   --danger: #dc2626;
-  --coin-1: #5b9cff;
-  --coin-2: #2b64d9;
+  --coin-1: #9945ff;
+  --coin-2: #14f195;
   --radius: 22px;
   --shadow: 0 10px 30px -12px rgb(15 23 42 / 0.25);
 }
@@ -89,7 +89,7 @@ body {
   .btn-primary {
     background: var(--accent);
     color: #fff;
-    box-shadow: 0 8px 20px -8px rgb(47 111 237 / 0.7);
+    box-shadow: 0 8px 20px -8px rgb(139 61 255 / 0.7);
   }
   .btn-primary:hover {
     background: var(--accent-strong);
@@ -171,11 +171,11 @@ body {
   width: 28px;
   height: 28px;
   border-radius: 999px;
-  background: radial-gradient(circle at 35% 30%, var(--coin-1), var(--coin-2));
-  box-shadow: 0 4px 10px -3px rgb(43 100 217 / 0.7), inset 0 0 0 2px rgb(255 255 255 / 0.85);
+  background: radial-gradient(circle at 35% 30%, #3b1d7a, #15092f);
+  box-shadow: 0 4px 10px -3px rgb(80 30 160 / 0.6), inset 0 0 0 2px var(--coin-1);
   display: grid;
   place-items: center;
-  color: #fff;
+  color: var(--coin-2);
   font-weight: 800;
   font-size: 13px;
   transition: transform 0.15s ease;
@@ -190,6 +190,7 @@ body {
   transform: scale(1.15);
 }
 .md-marker .tag {
+  pointer-events: none;
   position: absolute;
   left: 50%;
   top: 100%;
@@ -206,8 +207,8 @@ body {
   position: absolute;
   inset: -22px;
   border-radius: 999px;
-  background: rgb(47 111 237 / 0.14);
-  border: 1px solid rgb(47 111 237 / 0.35);
+  background: rgb(20 241 149 / 0.16);
+  border: 1px solid rgb(20 241 149 / 0.6);
   pointer-events: none;
 }
 .md-me {
@@ -216,7 +217,7 @@ body {
   height: 18px;
   border-radius: 999px;
   background: var(--accent);
-  box-shadow: 0 0 0 4px #fff, 0 0 0 10px rgb(47 111 237 / 0.2);
+  box-shadow: 0 0 0 4px #fff, 0 0 0 10px rgb(139 61 255 / 0.2);
 }
 .md-cluster {
   background: #fff;
@@ -234,7 +235,8 @@ body {
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  background: radial-gradient(circle at 35% 30%, var(--coin-1), var(--coin-2));
+  background: radial-gradient(circle at 35% 30%, #3b1d7a, #15092f);
+  box-shadow: inset 0 0 0 1.5px var(--coin-1);
   display: grid;
   place-items: center;
   color: #fff;
