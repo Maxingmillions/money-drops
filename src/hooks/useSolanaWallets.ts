@@ -21,11 +21,21 @@ export type WalletChoice = {
   signMessage: (address: string, message: Uint8Array) => Promise<Uint8Array>;
   /** Sign and broadcast a serialized transaction; returns the signature bytes. */
   signAndSendTransaction: (address: string, transaction: Uint8Array, chain: string) => Promise<Uint8Array>;
+  /**
+   * Sign a serialized transaction without broadcasting it; returns the signed
+   * bytes. Null when the wallet can't. Preferred for payments: the app then
+   * submits to its own cluster, so the wallet's network setting can't send the
+   * transaction to the wrong chain.
+   */
+  signTransaction: ((address: string, transaction: Uint8Array, chain: string) => Promise<Uint8Array>) | null;
 };
 
 type ConnectFeature = { connect: (opts?: { silent?: boolean }) => Promise<{ accounts: readonly WalletAccount[] }> };
 type SignMessageFeature = {
   signMessage: (input: { account: WalletAccount; message: Uint8Array }) => Promise<readonly { signature: Uint8Array }[]>;
+};
+type SignTransactionFeature = {
+  signTransaction: (input: { account: WalletAccount; transaction: Uint8Array; chain?: string }) => Promise<readonly { signedTransaction: Uint8Array }[]>;
 };
 type SignAndSendFeature = {
   signAndSendTransaction: (input: { account: WalletAccount; transaction: Uint8Array; chain: string }) => Promise<readonly { signature: Uint8Array }[]>;
@@ -36,6 +46,7 @@ type LegacyProvider = {
   connect: (opts?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: { toBase58(): string } } | void>;
   signMessage: (message: Uint8Array, display?: string) => Promise<{ signature: Uint8Array } | Uint8Array>;
   signAndSendTransaction?: (tx: Transaction) => Promise<{ signature: string }>;
+  signTransaction?: (tx: Transaction) => Promise<Transaction>;
 };
 
 const isSolanaWallet = (w: Wallet) =>
@@ -66,6 +77,16 @@ function fromStandard(w: Wallet): WalletChoice {
       const [out] = await f.signAndSendTransaction({ account, transaction, chain });
       return out.signature;
     },
+    signTransaction:
+      "solana:signTransaction" in w.features
+        ? async (address, transaction, chain) => {
+            const account = accounts.find((a) => a.address === address) ?? w.accounts.find((a) => a.address === address);
+            if (!account) throw new Error("Account not connected");
+            const f = w.features["solana:signTransaction"] as SignTransactionFeature;
+            const [out] = await f.signTransaction({ account, transaction, chain });
+            return out.signedTransaction;
+          }
+        : null,
   };
 }
 
@@ -89,6 +110,12 @@ function fromLegacy(name: string, provider: LegacyProvider, icon: string | null)
       const { signature } = await provider.signAndSendTransaction(Transaction.from(transaction));
       return bs58.decode(signature);
     },
+    signTransaction: provider.signTransaction
+      ? async (_address, transaction) => {
+          const signed = await provider.signTransaction!(Transaction.from(transaction));
+          return new Uint8Array(signed.serialize());
+        }
+      : null,
   };
 }
 

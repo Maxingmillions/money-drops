@@ -11,6 +11,16 @@ import { useSolanaWallets } from "@/hooks/useSolanaWallets";
 
 const CONFIRM_MS = 45_000;
 
+/** RPC errors are verbose; keep the part a person can act on. */
+function friendly(e: unknown) {
+  const raw = e instanceof Error ? e.message : "Payment failed";
+  if (/insufficient (lamports|funds)/i.test(raw)) return `Not enough SOL on ${CLUSTER} to cover the payment and network fee.`;
+  if (/signature verification/i.test(raw)) return "The wallet returned a bad signature. Make sure the connected account matches the one you signed in with.";
+  if (/blockhash not found|block height exceeded/i.test(raw)) return "The transaction expired before it was sent. Try again.";
+  if (/user rejected|rejected the request/i.test(raw)) return "You rejected the transaction in your wallet. Nothing was charged.";
+  return raw.replace(/^Simulation failed\.\s*Message:\s*/i, "").replace(/\s*Logs:.*$/s, "").slice(0, 300);
+}
+
 function readSaved(key: string) {
   try {
     return typeof window === "undefined" ? null : localStorage.getItem(key);
@@ -106,12 +116,19 @@ export function FundWithWallet({
       const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash("confirmed");
       tx.recentBlockhash = blockhash;
 
-      const sigBytes = await provider.signAndSendTransaction(
-        wallet,
-        tx.serialize({ requireAllSignatures: false, verifySignatures: false }),
-        CLUSTER === "mainnet-beta" ? "solana:mainnet" : "solana:devnet",
-      );
-      const signature = bs58.encode(sigBytes);
+      const chain = CLUSTER === "mainnet-beta" ? "solana:mainnet" : "solana:devnet";
+      const unsigned = tx.serialize({ requireAllSignatures: false, verifySignatures: false });
+      let signature: string;
+      if (provider.signTransaction) {
+        // Wallet signs; we broadcast to OUR cluster. Phantom in mainnet mode would
+        // otherwise quietly send a devnet transaction to mainnet, where it just vanishes.
+        setMsg("Approve the transaction in your wallet…");
+        const signed = await provider.signTransaction(wallet, unsigned, chain);
+        signature = await conn.sendRawTransaction(signed, { skipPreflight: false, preflightCommitment: "confirmed" });
+      } else {
+        const sigBytes = await provider.signAndSendTransaction(wallet, unsigned, chain);
+        signature = bs58.encode(sigBytes);
+      }
       setSig(signature);
       try {
         localStorage.setItem(storageKey, signature);
@@ -142,7 +159,7 @@ export function FundWithWallet({
       }
       await verify(signature);
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Payment failed");
+      setMsg(friendly(e));
       setBusy(false);
     }
   };
