@@ -7,6 +7,7 @@ import { ChevronLeft } from "lucide-react";
 import { DropMap } from "./DropMap";
 import { Coin } from "./Coin";
 import { FundWithWallet } from "./FundWithWallet";
+import { EndPostButton } from "./EndPostButton";
 import { api } from "@/lib/client";
 import { formatSol } from "@/lib/geo";
 import { explorerTxUrl } from "@/lib/solana";
@@ -27,6 +28,8 @@ export type CampaignDetail = {
     startsAt: string | null;
     endsAt: string | null;
     fundingTxSig: string | null;
+    refundedLamports: number;
+    refundTxSig: string | null;
     dropCount: number;
     remaining: number;
     bigRemaining: number;
@@ -131,6 +134,20 @@ export function CampaignScreen({ id }: { id: string }) {
           {c.startsAt && <Row k="Starts" v={new Date(c.startsAt).toLocaleString()} />}
           {c.endsAt && <Row k="Ends" v={new Date(c.endsAt).toLocaleString()} />}
           <Row k="Each person" v={c.perPersonLimit === 1 ? "One drop" : `Up to ${c.perPersonLimit}`} />
+          {c.status === "REFUNDED" && (
+            <Row
+              k="Returned to you"
+              v={
+                c.refundTxSig ? (
+                  <a className="text-accent" href={explorerTxUrl(c.refundTxSig)} target="_blank" rel="noreferrer">
+                    {formatSol(c.refundedLamports)} ↗
+                  </a>
+                ) : (
+                  formatSol(c.refundedLamports)
+                )
+              }
+            />
+          )}
           {c.fundingTxSig && (
             <Row
               k="Escrow deposit"
@@ -147,6 +164,15 @@ export function CampaignScreen({ id }: { id: string }) {
           <Link href={`/map`} className="btn btn-secondary mt-6 w-full">
             See it on the map
           </Link>
+        )}
+        {(c.status === "ACTIVE" || c.status === "DRAFT") && (
+          <EndPostButton
+            endpoint={`/api/campaigns/${c.id}/end`}
+            label="End hunt and get the rest back"
+            confirm={`End this hunt now? The ${c.remaining} unclaimed ${c.remaining === 1 ? "drop" : "drops"} disappear from the map and nobody else can find them.`}
+            refundLamports={c.totalLamports - c.claimedLamports}
+            onDone={load}
+          />
         )}
       </div>
     </main>

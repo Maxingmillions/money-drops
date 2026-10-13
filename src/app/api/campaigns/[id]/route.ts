@@ -43,6 +43,8 @@ export const GET = handler<Ctx>(async (_req, { params }) => {
       endsAt: c.endsAt,
       fundingTxSig: c.fundingTxSig,
       fundedAt: c.fundedAt,
+      refundedLamports: c.refundedLamports ?? 0,
+      refundTxSig: c.refundTxSig,
       dropCount: c.drops.length,
       ...stats,
       tiers: [...tiers.entries()]

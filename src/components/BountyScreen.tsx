@@ -7,6 +7,7 @@ import { ChevronLeft, MapPin, Clock, Video, Check, X as XIcon, ExternalLink, Shi
 import { upload } from "@vercel/blob/client";
 import { DropMap } from "./DropMap";
 import { FundWithWallet } from "./FundWithWallet";
+import { EndPostButton } from "./EndPostButton";
 import { api } from "@/lib/client";
 import { formatDistance, formatSol } from "@/lib/geo";
 import { explorerTxUrl } from "@/lib/solana";
@@ -110,6 +111,16 @@ export function BountyScreen({ id }: { id: string }) {
                 <SubmitForm bountyId={b.id} onDone={load} />
               )}
             </section>
+          )}
+
+          {data.isCreator && (b.status === "OPEN" || b.status === "DRAFT") && (
+            <EndPostButton
+              endpoint={`/api/bounties/${b.id}/close`}
+              label="Close bounty and get the rest back"
+              confirm="Close this bounty now? Pending submissions are rejected and nobody else can submit."
+              refundLamports={Math.max(0, (b.maxWinners - b.approved) * b.rewardLamports)}
+              onDone={load}
+            />
           )}
 
           {(data.isCreator || data.canReview || data.submissions.length > 0) && (
