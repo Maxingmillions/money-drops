@@ -46,8 +46,18 @@ const geolocationSupported = () => typeof navigator !== "undefined" && "geolocat
  * position stored in localStorage overrides the real one so the hunt flow can
  * be tested from a desk.
  */
+const GRANTED_EVENT = "md:location-granted";
+function subscribeGranted(cb: () => void) {
+  window.addEventListener(GRANTED_EVENT, cb);
+  return () => window.removeEventListener(GRANTED_EVENT, cb);
+}
+let grantedCount = 0;
+if (typeof window !== "undefined") window.addEventListener(GRANTED_EVENT, () => grantedCount++);
+
 export function useGeolocation(opts: { watch?: boolean } = { watch: true }) {
   const [fix, setFix] = useState<Fix | null>(null);
+  // Bumps when the permission prompt succeeds so a failed watch is retried.
+  const granted = useSyncExternalStore(subscribeGranted, () => grantedCount, () => 0);
   const [geoError, setError] = useState<string | null>(null);
   const simulated = useSyncExternalStore(subscribeSim, readSim, () => null);
   const supported = useSyncExternalStore(() => () => {}, geolocationSupported, () => true);
@@ -79,7 +89,7 @@ export function useGeolocation(opts: { watch?: boolean } = { watch: true }) {
     }
     const id = navigator.geolocation.watchPosition(ok, fail, options);
     return () => navigator.geolocation.clearWatch(id);
-  }, [opts.watch]);
+  }, [opts.watch, granted]);
 
   const setSimulated = useCallback((p: LatLng | null) => {
     if (!DEV_LOCATION) return;

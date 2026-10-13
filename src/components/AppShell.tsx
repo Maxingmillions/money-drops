@@ -6,6 +6,7 @@ import { Wallet, Map as MapIcon, Plus, LogOut, LineChart, Target, MessageCircle 
 import { Coin } from "./Coin";
 import { BottomNav } from "./BottomNav";
 import { WalletPill } from "./WalletPill";
+import { PermissionsGate } from "./PermissionsGate";
 import { api } from "@/lib/client";
 
 const items = [
@@ -54,6 +55,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <WalletPill className="pointer-events-auto" />
       </div>
       {!hideMobileNav && <BottomNav />}
+      <PermissionsGate />
     </div>
   );
 }

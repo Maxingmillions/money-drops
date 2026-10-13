@@ -49,13 +49,16 @@ export function HuntScreen({ dropId }: { dropId: string }) {
 
   const distance = drop && Number.isFinite(drop.distanceM) ? drop.distanceM : null;
   const bearing = drop && position ? bearingDeg(position, drop) : null;
-  const relative = bearing != null && heading != null ? ((bearing - heading + 540) % 360) - 180 : null;
+  // With a compass the dial turns with the phone; without one it stays north-up
+  // and the coin sits at its true bearing, so the dial is still useful.
+  const hasCompass = heading != null;
+  const relative = bearing != null ? ((bearing - (heading ?? 0) + 540) % 360) - 180 : null;
   const hint =
     relative == null
-      ? heading == null
-        ? "Point your phone and walk"
-        : ""
-      : Math.abs(relative) < 20
+      ? "Point your phone and walk"
+      : !hasCompass
+        ? "North is up · no compass yet"
+        : Math.abs(relative) < 20
         ? "Straight ahead"
         : Math.abs(relative) > 150
           ? "It's behind you"
@@ -90,8 +93,13 @@ export function HuntScreen({ dropId }: { dropId: string }) {
                 <div className={`mx-auto mt-2 w-px ${i % 15 === 0 ? "h-3 bg-fg" : "h-1.5 bg-line"}`} />
               </div>
             ))}
-            <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-faint">E</span>
-            <span className="absolute left-1/2 top-4 -translate-x-1/2 text-[10px] font-semibold text-faint">N</span>
+            {/* Cardinal labels turn with the phone when a compass is available. */}
+            <div className="absolute inset-0 transition-transform duration-200" style={{ transform: `rotate(${hasCompass ? -heading! : 0}deg)` }}>
+              <span className="absolute left-1/2 top-4 -translate-x-1/2 text-[11px] font-bold text-accent">N</span>
+              <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-faint">E</span>
+              <span className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-faint">S</span>
+              <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-faint">W</span>
+            </div>
             {relative != null && (
               <div className="absolute left-1/2 top-1/2 h-[42%] w-px origin-top" style={{ transform: `translate(-50%,0) rotate(${relative + 180}deg)` }}>
                 <div className="relative -ml-[18px] -mt-[18px] h-9 w-9" style={{ transform: `rotate(${-(relative + 180)}deg)` }}>
@@ -102,8 +110,8 @@ export function HuntScreen({ dropId }: { dropId: string }) {
             )}
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <div className="text-[64px] font-bold leading-none tracking-tight">
-                {distance == null ? "—" : distance < 1000 ? Math.round(distance) : (distance / 1000).toFixed(1)}
-                <span className="ml-1 text-2xl text-muted">{distance != null && distance >= 1000 ? "km" : "m"}</span>
+                {distance == null ? <span className="text-[28px] text-muted">Locating…</span> : distance < 1000 ? Math.round(distance) : (distance / 1000).toFixed(1)}
+                {distance != null && <span className="ml-1 text-2xl text-muted">{distance >= 1000 ? "km" : "m"}</span>}
               </div>
               <div className="mt-2 text-sm font-semibold text-accent">
                 {trend === "warmer" ? "Getting warmer" : trend === "colder" ? "Getting colder" : "Keep moving"}
