@@ -80,7 +80,7 @@ export function BountiesScreen({ isMod, guest = false }: { isMod: boolean; guest
               </div>
               <div className="shrink-0 rounded-2xl bg-accent-soft px-3 py-1.5 text-right">
                 <div className="text-lg font-bold leading-tight text-accent">{formatSol(b.rewardLamports, { compact: true })}</div>
-                <div className="text-[10px] font-semibold text-accent/70">USDC</div>
+                <div className="text-[10px] font-semibold text-accent/70">SOL</div>
               </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">

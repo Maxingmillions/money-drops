@@ -14,7 +14,7 @@ export default function ExploreLayout({ children }: { children: React.ReactNode 
           <Coin size={28} /> Drops
         </Link>
         <ExploreTabs />
-        <Link href="/sign-in" className="btn btn-primary ml-auto !px-4 !py-2 text-sm">
+        <Link href="/sign-in" className="btn btn-primary ml-auto whitespace-nowrap !px-4 !py-2 text-sm">
           <LogIn size={16} /> Sign in
         </Link>
       </header>
