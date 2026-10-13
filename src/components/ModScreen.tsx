@@ -4,22 +4,23 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Shield, Trash2, Target, Coins, Users, ListChecks, Check } from "lucide-react";
 import { api } from "@/lib/client";
-import { formatUsd } from "@/lib/geo";
+import { formatSol } from "@/lib/geo";
 import { explorerTxUrl } from "@/lib/solana";
 import { SubmissionRow } from "./BountyScreen";
 
 type QueueItem = {
   id: string;
-  videoUrl: string;
+  videoUrl: string | null;
+  files: { pathname: string; contentType: string; size: number; name: string }[];
   note: string | null;
   createdAt: string;
   user: string;
-  bounty: { id: string; title: string; rewardCents: number; areaName: string | null; creator: string };
+  bounty: { id: string; title: string; rewardLamports: number; areaName: string | null; creator: string };
 };
 type Posts = {
   me: { role: string };
-  campaigns: { id: string; title: string; creator: string; status: string; totalCents: number; remainingCents: number; remaining: number; dropCount: number; areaName: string | null; funded: boolean; createdAt: string }[];
-  bounties: { id: string; title: string; creator: string; status: string; rewardCents: number; maxWinners: number; approved: number; pending: number; areaName: string | null; funded: boolean; createdAt: string }[];
+  campaigns: { id: string; title: string; creator: string; status: string; totalLamports: number; remainingLamports: number; remaining: number; dropCount: number; areaName: string | null; funded: boolean; createdAt: string }[];
+  bounties: { id: string; title: string; creator: string; status: string; rewardLamports: number; maxWinners: number; approved: number; pending: number; areaName: string | null; funded: boolean; createdAt: string }[];
   team: { id: string; wallet: string; handle: string | null; role: string }[];
 };
 type Tab = "queue" | "drops" | "bounties" | "team";
@@ -76,10 +77,10 @@ export function ModScreen() {
                   <Link href={`/bounties/${item.bounty.id}`} className="truncate text-sm font-bold text-accent">
                     {item.bounty.title}
                   </Link>
-                  <span className="text-sm font-bold">{formatUsd(item.bounty.rewardCents, { compact: true })}</span>
+                  <span className="text-sm font-bold">{formatSol(item.bounty.rewardLamports, { compact: true })}</span>
                 </div>
                 <SubmissionRow
-                  s={{ id: item.id, user: item.user, mine: false, videoUrl: item.videoUrl, note: item.note, status: "PENDING", reviewNote: null, payoutStatus: "PENDING", payoutTxSig: null, createdAt: item.createdAt }}
+                  s={{ id: item.id, user: item.user, mine: false, videoUrl: item.videoUrl, files: item.files, note: item.note, status: "PENDING", reviewNote: null, payoutStatus: "PENDING", payoutTxSig: null, createdAt: item.createdAt }}
                   canReview
                   onChanged={load}
                 />
@@ -96,11 +97,12 @@ export function ModScreen() {
                 key={c.id}
                 href={`/campaigns/${c.id}`}
                 title={c.title}
-                meta={`${c.creator} · ${c.areaName ?? "no area"} · ${c.remaining}/${c.dropCount} drops left · ${formatUsd(c.remainingCents, { compact: true })} unclaimed${c.funded ? " · on-chain" : ""}`}
+                meta={`${c.creator} · ${c.areaName ?? "no area"} · ${c.remaining}/${c.dropCount} drops left · ${formatSol(c.remainingLamports, { compact: true })} unclaimed${c.funded ? " · on-chain" : ""}`}
                 status={c.status}
-                amount={formatUsd(c.totalCents, { compact: true })}
+                amount={formatSol(c.totalLamports, { compact: true })}
                 endpoint={`/api/mod/campaigns/${c.id}`}
                 canAct={c.status === "ACTIVE" || c.status === "DRAFT"}
+                isAdmin={posts.me.role === "ADMIN"}
                 onChanged={load}
               />
             ))}
@@ -117,9 +119,10 @@ export function ModScreen() {
                 title={b.title}
                 meta={`${b.creator} · ${b.areaName ?? "anywhere"} · ${b.approved}/${b.maxWinners} paid · ${b.pending} pending${b.funded ? " · on-chain" : ""}`}
                 status={b.status}
-                amount={formatUsd(b.rewardCents * b.maxWinners, { compact: true })}
+                amount={formatSol(b.rewardLamports * b.maxWinners, { compact: true })}
                 endpoint={`/api/mod/bounties/${b.id}`}
                 canAct={b.status === "OPEN" || b.status === "DRAFT"}
+                isAdmin={posts.me.role === "ADMIN"}
                 onChanged={load}
               />
             ))}
@@ -136,11 +139,13 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <div className="row-list px-4 py-8 text-center text-sm text-muted">{children}</div>;
 }
 
-function PostRow({ href, title, meta, status, amount, endpoint, canAct, onChanged }: { href: string; title: string; meta: string; status: string; amount: string; endpoint: string; canAct: boolean; onChanged: () => void }) {
+function PostRow({ href, title, meta, status, amount, endpoint, canAct, isAdmin, onChanged }: { href: string; title: string; meta: string; status: string; amount: string; endpoint: string; canAct: boolean; isAdmin: boolean; onChanged: () => void }) {
+  const [deleting, setDeleting] = useState(false);
+  const [gone, setGone] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ refundedCents: number; txSig: string | null; note: string } | null>(null);
+  const [result, setResult] = useState<{ refundedLamports: number; txSig: string | null; note: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pill = status === "ACTIVE" || status === "OPEN" ? "bg-success-soft text-success" : status === "REFUNDED" ? "bg-red-50 text-danger" : "bg-soft text-muted";
   return (
@@ -157,7 +162,7 @@ function PostRow({ href, title, meta, status, amount, endpoint, canAct, onChange
       </div>
       {result ? (
         <p className="mt-3 flex items-center gap-1 text-sm text-success">
-          <Check size={14} /> Taken down. Refunded {formatUsd(result.refundedCents, { compact: true })} · {result.note}
+          <Check size={14} /> Taken down. Refunded {formatSol(result.refundedLamports, { compact: true })} · {result.note}
           {result.txSig && (
             <a className="ml-1 underline" href={explorerTxUrl(result.txSig)} target="_blank" rel="noreferrer">
               tx ↗
@@ -175,7 +180,7 @@ function PostRow({ href, title, meta, status, amount, endpoint, canAct, onChange
                 setBusy(true);
                 setError(null);
                 try {
-                  const r = await api<{ refundedCents: number; txSig: string | null; note: string }>(endpoint, { method: "POST", json: { action: "takedown", note: note || undefined } });
+                  const r = await api<{ refundedLamports: number; txSig: string | null; note: string }>(endpoint, { method: "POST", json: { action: "takedown", note: note || undefined } });
                   setResult(r);
                   onChanged();
                 } catch (e) {
@@ -197,6 +202,28 @@ function PostRow({ href, title, meta, status, amount, endpoint, canAct, onChange
           </button>
         )
       ) : null}
+      {isAdmin && !gone && (
+        <button
+          className="mt-2 flex items-center gap-1 text-xs text-danger"
+          disabled={deleting}
+          onClick={async () => {
+            if (!window.confirm("Delete this post completely? Unclaimed funds are refunded first.")) return;
+            setDeleting(true);
+            try {
+              await api(endpoint, { method: "DELETE" });
+              setGone(true);
+              onChanged();
+            } catch (e) {
+              setError(e instanceof Error ? e.message : "Delete failed");
+            } finally {
+              setDeleting(false);
+            }
+          }}
+        >
+          <Trash2 size={12} /> Delete permanently (admin)
+        </button>
+      )}
+      {gone && <p className="mt-2 text-xs text-muted">Deleted.</p>}
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}
     </div>
   );

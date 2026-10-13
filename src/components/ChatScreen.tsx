@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, Send, Shield } from "lucide-react";
+import { ChevronLeft, Send, Shield, Trash2 } from "lucide-react";
 import { api } from "@/lib/client";
 
 type Msg = { id: string; body: string; createdAt: string; user: string; role: string; mine: boolean };
@@ -12,7 +12,20 @@ export function ChatScreen() {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [me, setMe] = useState<{ role: string } | null>(null);
   const list = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    api<{ user: { role: string } }>("/api/me").then((r) => setMe(r.user)).catch(() => {});
+  }, []);
+  const canModerate = me?.role === "MOD" || me?.role === "ADMIN";
+  const remove = async (id: string) => {
+    try {
+      await api(`/api/chat/${id}`, { method: "DELETE" });
+      setMessages((m) => m.filter((x) => x.id !== id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't delete");
+    }
+  };
   const lastId = useRef<string | null>(null);
 
   // Initial load + 3 s polling for new messages.
@@ -92,7 +105,12 @@ export function ChatScreen() {
                 </div>
               )}
               <div className="whitespace-pre-wrap break-words text-sm">{m.body}</div>
-              <div className={`mt-0.5 text-right text-[10px] ${m.mine ? "text-white/70" : "text-faint"}`}>
+              <div className={`mt-0.5 flex items-center justify-end gap-2 text-[10px] ${m.mine ? "text-white/70" : "text-faint"}`}>
+                {(canModerate || m.mine) && (
+                  <button className="opacity-60 hover:opacity-100" onClick={() => remove(m.id)} aria-label="Delete message">
+                    <Trash2 size={11} />
+                  </button>
+                )}
                 {new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </div>
             </div>

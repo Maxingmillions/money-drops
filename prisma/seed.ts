@@ -4,7 +4,7 @@
  * Idempotent: re-running skips what already exists.
  */
 import { PrismaClient } from "@prisma/client";
-import { scatterDrops } from "../src/lib/geo";
+import { scatterDrops, solToLamports as sol } from "../src/lib/geo";
 
 const prisma = new PrismaClient();
 
@@ -24,37 +24,37 @@ const SEED_USERS = [
   { wallet: "SeedModRiley1111111111111111111111111111111", handle: "riley (mod)", role: "MOD" },
 ];
 
-type Hunt = { title: string; areaName: string; lat: number; lng: number; radiusM: number; by: string; tiers: { count: number; amountCents: number }[] };
+type Hunt = { title: string; areaName: string; lat: number; lng: number; radiusM: number; by: string; tiers: { count: number; amountLamports: number }[] };
 const HUNTS: Hunt[] = [
-  { title: "hana.sui's Tokyo drop", areaName: "Yoyogi Park", lat: 35.6717, lng: 139.6949, radiusM: 600, by: "hana.sui", tiers: [{ count: 30, amountCents: 500 }, { count: 8, amountCents: 5000 }, { count: 2, amountCents: 10000 }] },
-  { title: "Central Park Sunday", areaName: "Central Park, NYC", lat: 40.7812, lng: -73.9665, radiusM: 1200, by: "maxx", tiers: [{ count: 40, amountCents: 1000 }, { count: 5, amountCents: 10000 }] },
-  { title: "Venice Beach boardwalk", areaName: "Venice Beach, LA", lat: 33.985, lng: -118.4695, radiusM: 700, by: "sol_queen", tiers: [{ count: 25, amountCents: 800 }, { count: 3, amountCents: 20000 }] },
-  { title: "Hyde Park hunt", areaName: "Hyde Park, London", lat: 51.5073, lng: -0.1657, radiusM: 900, by: "pierre", tiers: [{ count: 35, amountCents: 500 }, { count: 4, amountCents: 5000 }] },
-  { title: "South Beach sprint", areaName: "South Beach, Miami", lat: 25.7826, lng: -80.1341, radiusM: 500, by: "degen_dan", tiers: [{ count: 20, amountCents: 1500 }, { count: 1, amountCents: 50000 }] },
-  { title: "Dolores Park drop", areaName: "Mission Dolores Park, SF", lat: 37.7596, lng: -122.4269, radiusM: 350, by: "maxx", tiers: [{ count: 15, amountCents: 2000 }] },
+  { title: "hana.sui's Tokyo drop", areaName: "Yoyogi Park", lat: 35.6717, lng: 139.6949, radiusM: 600, by: "hana.sui", tiers: [{ count: 30, amountLamports: sol(0.05) }, { count: 8, amountLamports: sol(0.5) }, { count: 2, amountLamports: sol(1) }] },
+  { title: "Central Park Sunday", areaName: "Central Park, NYC", lat: 40.7812, lng: -73.9665, radiusM: 1200, by: "maxx", tiers: [{ count: 40, amountLamports: sol(0.1) }, { count: 5, amountLamports: sol(1) }] },
+  { title: "Venice Beach boardwalk", areaName: "Venice Beach, LA", lat: 33.985, lng: -118.4695, radiusM: 700, by: "sol_queen", tiers: [{ count: 25, amountLamports: sol(0.08) }, { count: 3, amountLamports: sol(2) }] },
+  { title: "Hyde Park hunt", areaName: "Hyde Park, London", lat: 51.5073, lng: -0.1657, radiusM: 900, by: "pierre", tiers: [{ count: 35, amountLamports: sol(0.05) }, { count: 4, amountLamports: sol(0.5) }] },
+  { title: "South Beach sprint", areaName: "South Beach, Miami", lat: 25.7826, lng: -80.1341, radiusM: 500, by: "degen_dan", tiers: [{ count: 20, amountLamports: sol(0.15) }, { count: 1, amountLamports: sol(5) }] },
+  { title: "Dolores Park drop", areaName: "Mission Dolores Park, SF", lat: 37.7596, lng: -122.4269, radiusM: 350, by: "maxx", tiers: [{ count: 15, amountLamports: sol(0.2) }] },
 ];
 
 const BOUNTIES = [
-  { title: "Backflip at the fountain", description: "Film yourself doing a backflip in front of the Yoyogi Park fountain. Face visible, one continuous shot.", rewardCents: 5000, areaName: "Yoyogi Park", lat: 35.6717, lng: 139.6949, radiusM: 200, by: "hana.sui", maxWinners: 1 },
-  { title: "Sing happy birthday to a stranger", description: "Approach a stranger in Central Park and sing them a full happy birthday. They must smile by the end.", rewardCents: 2500, areaName: "Central Park, NYC", lat: 40.7812, lng: -73.9665, radiusM: 1500, by: "maxx", maxWinners: 3 },
-  { title: "Ice bath in the Atlantic", description: "Full submersion at South Beach before 7am. Show the sunrise and the timestamp.", rewardCents: 10000, areaName: "South Beach, Miami", lat: 25.7826, lng: -80.1341, radiusM: 800, by: "degen_dan", maxWinners: 1 },
-  { title: "Street-perform for 10 minutes", description: "Any instrument, any corner of Venice boardwalk. Ten uninterrupted minutes. Bonus points for a crowd.", rewardCents: 7500, areaName: "Venice Beach, LA", lat: 33.985, lng: -118.4695, radiusM: 600, by: "sol_queen", maxWinners: 2 },
-  { title: "Explain Solana to your grandma", description: "No location needed. Film a 60-second explanation of what Solana is to someone over 60 and get them to say 'gm' on camera.", rewardCents: 2000, by: "pierre", maxWinners: 5 },
-  { title: "Run up the Rocky steps", description: "Philadelphia Museum of Art steps, full sprint, arms up at the top. Film it in one take.", rewardCents: 4000, areaName: "Philadelphia Museum of Art", lat: 39.9656, lng: -75.1810, radiusM: 300, by: "degen_dan", maxWinners: 1 },
+  { title: "Backflip at the fountain", description: "Film yourself doing a backflip in front of the Yoyogi Park fountain. Face visible, one continuous shot.", rewardLamports: sol(0.5), areaName: "Yoyogi Park", lat: 35.6717, lng: 139.6949, radiusM: 200, by: "hana.sui", maxWinners: 1 },
+  { title: "Sing happy birthday to a stranger", description: "Approach a stranger in Central Park and sing them a full happy birthday. They must smile by the end.", rewardLamports: sol(0.25), areaName: "Central Park, NYC", lat: 40.7812, lng: -73.9665, radiusM: 1500, by: "maxx", maxWinners: 3 },
+  { title: "Ice bath in the Atlantic", description: "Full submersion at South Beach before 7am. Show the sunrise and the timestamp.", rewardLamports: sol(1), areaName: "South Beach, Miami", lat: 25.7826, lng: -80.1341, radiusM: 800, by: "degen_dan", maxWinners: 1 },
+  { title: "Street-perform for 10 minutes", description: "Any instrument, any corner of Venice boardwalk. Ten uninterrupted minutes. Bonus points for a crowd.", rewardLamports: sol(0.75), areaName: "Venice Beach, LA", lat: 33.985, lng: -118.4695, radiusM: 600, by: "sol_queen", maxWinners: 2 },
+  { title: "Explain Solana to your grandma", description: "No location needed. Film a 60-second explanation of what Solana is to someone over 60 and get them to say 'gm' on camera.", rewardLamports: sol(0.2), by: "pierre", maxWinners: 5 },
+  { title: "Run up the Rocky steps", description: "Philadelphia Museum of Art steps, full sprint, arms up at the top. Film it in one take.", rewardLamports: sol(0.4), areaName: "Philadelphia Museum of Art", lat: 39.9656, lng: -75.1810, radiusM: 300, by: "degen_dan", maxWinners: 1 },
 ];
 
 const CHAT = [
   ["maxx", "gm hunters ☀️"],
-  ["hana.sui", "just hid $9,930 across Yoyogi, go get it"],
-  ["degen_dan", "wait the $100 ones are real?"],
-  ["hana.sui", "yes. 10 of them. good luck"],
-  ["sol_queen", "found $50 by the pond in like 4 minutes lol"],
+  ["hana.sui", "just hid 3 SOL across Yoyogi, go get it"],
+  ["degen_dan", "wait the 1 SOL ones are real?"],
+  ["hana.sui", "yes. 2 of them. good luck"],
+  ["sol_queen", "found 0.5 SOL by the pond in like 4 minutes lol"],
   ["pierre", "London hunt is live in Hyde Park, 39 drops"],
   ["riley (mod)", "reminder: bounty videos need your face visible or we can't approve them"],
-  ["degen_dan", "posted the Miami ice bath bounty, $100 to whoever is brave"],
+  ["degen_dan", "posted the Miami ice bath bounty, 1 SOL to whoever is brave"],
   ["maxx", "the backflip bounty got claimed already?? fast"],
   ["sol_queen", "venice drops are mostly on the boardwalk side, not the sand"],
-  ["pierre", "someone in London just took the $50 near the Serpentine"],
+  ["pierre", "someone in London just took the 0.5 SOL near the Serpentine"],
   ["riley (mod)", "queue is clear, keep them coming"],
 ];
 
@@ -78,14 +78,14 @@ async function main() {
   for (const h of HUNTS) {
     const exists = await prisma.campaign.findFirst({ where: { creatorId: by(h.by).id, title: h.title } });
     if (exists) continue;
-    const totalCents = h.tiers.reduce((s, t) => s + t.count * t.amountCents, 0);
+    const totalLamports = h.tiers.reduce((s, t) => s + t.count * t.amountLamports, 0);
     const campaign = await prisma.campaign.create({
       data: {
         creatorId: by(h.by).id,
         title: h.title,
         kind: "PROXIMITY",
         status: "ACTIVE",
-        totalCents,
+        totalLamports,
         perPersonLimit: 1,
         searchRadiusM: 80,
         centerLat: h.lat,
@@ -98,7 +98,7 @@ async function main() {
     const drops = scatterDrops({ centerLat: h.lat, centerLng: h.lng, radiusM: h.radiusM }, h.tiers, rand).map((d) => ({ ...d, campaignId: campaign.id }));
     await prisma.drop.createMany({ data: drops });
     // Claim ~15% of the cheap drops by other seed users for realistic stats.
-    const created = await prisma.drop.findMany({ where: { campaignId: campaign.id }, orderBy: { amountCents: "asc" } });
+    const created = await prisma.drop.findMany({ where: { campaignId: campaign.id }, orderBy: { amountLamports: "asc" } });
     const claimers = SEED_USERS.filter((u) => u.handle !== h.by && u.role === "USER");
     for (let i = 0; i < Math.floor(created.length * 0.15); i++) {
       const d = created[i];
@@ -107,7 +107,7 @@ async function main() {
       if (already) continue;
       await prisma.drop.update({ where: { id: d.id }, data: { status: "CLAIMED" } });
       await prisma.claim.create({
-        data: { dropId: d.id, campaignId: campaign.id, userId: c.id, amountCents: d.amountCents, lat: d.lat, lng: d.lng, distanceM: 3 + rand() * 8, payoutStatus: "PAID", payoutTxSig: null, createdAt: new Date(Date.now() - rand() * 5 * 86_400_000) },
+        data: { dropId: d.id, campaignId: campaign.id, userId: c.id, amountLamports: d.amountLamports, lat: d.lat, lng: d.lng, distanceM: 3 + rand() * 8, payoutStatus: "PAID", payoutTxSig: null, createdAt: new Date(Date.now() - rand() * 5 * 86_400_000) },
       });
     }
     console.log(`hunt: ${h.title} (${drops.length} drops)`);
@@ -123,7 +123,7 @@ async function main() {
         creatorId: by(b.by).id,
         title: b.title,
         description: b.description,
-        rewardCents: b.rewardCents,
+        rewardLamports: b.rewardLamports,
         maxWinners: b.maxWinners,
         lat: b.lat ?? null,
         lng: b.lng ?? null,

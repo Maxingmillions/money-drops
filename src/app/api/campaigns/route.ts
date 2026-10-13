@@ -2,21 +2,23 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { ApiError, handler, json, parseBody, requireSession } from "@/lib/api";
 import { scatterDrops } from "@/lib/geo";
-import { devSkipFunding, treasuryAddress } from "@/lib/solana";
+import { requiresFunding, treasuryAddress } from "@/lib/solana";
+import { collectFee, feeFor, totalWithFee } from "@/lib/pool";
 
 const Body = z.object({
   title: z.string().trim().min(2).max(60),
   kind: z.enum(["PROXIMITY", "EVENT"]),
+  /** Lamports per drop; min 0.001 SOL, max 1,000 SOL. */
   tiers: z
-    .array(z.object({ count: z.number().int().min(1).max(5000), amountCents: z.number().int().min(100).max(1_000_000) }))
+    .array(z.object({ count: z.number().int().min(1).max(5000), amountLamports: z.number().int().min(1_000_000).max(1_000_000_000_000) }))
     .min(1)
     .max(5),
   centerLat: z.number().min(-90).max(90),
   centerLng: z.number().min(-180).max(180),
-  radiusM: z.number().int().min(50).max(5000),
+  radiusM: z.number().int().min(20).max(100_000),
   areaName: z.string().trim().max(60).optional(),
   perPersonLimit: z.number().int().min(1).max(100).default(1),
-  searchRadiusM: z.number().int().min(40).max(500).default(80),
+  searchRadiusM: z.number().int().min(40).max(2000).default(80),
   startsAt: z.string().datetime().optional(),
   endsAt: z.string().datetime().optional(),
 });
@@ -27,21 +29,22 @@ export const POST = handler(async (req) => {
 
   const dropCount = body.tiers.reduce((s, t) => s + t.count, 0);
   if (dropCount > 5000) throw new ApiError(400, "Too many drops in one campaign (max 5,000)");
-  const totalCents = body.tiers.reduce((s, t) => s + t.count * t.amountCents, 0);
+  const totalLamports = body.tiers.reduce((s, t) => s + t.count * t.amountLamports, 0);
 
   if (body.kind === "EVENT") {
     if (!body.startsAt || !body.endsAt) throw new ApiError(400, "Event drops need a start and end time");
     if (new Date(body.endsAt) <= new Date(body.startsAt)) throw new ApiError(400, "End must be after start");
   }
 
-  const skip = devSkipFunding();
+  const me = await prisma.user.findUniqueOrThrow({ where: { id: session.userId } });
+  const skip = !requiresFunding(me.loginMethod);
   const campaign = await prisma.campaign.create({
     data: {
       creatorId: session.userId,
       title: body.title,
       kind: body.kind,
       status: skip ? "ACTIVE" : "DRAFT",
-      totalCents,
+      totalLamports,
       perPersonLimit: body.perPersonLimit,
       searchRadiusM: body.searchRadiusM,
       centerLat: body.centerLat,
@@ -53,6 +56,7 @@ export const POST = handler(async (req) => {
       fundedAt: skip ? new Date() : null,
     },
   });
+  if (skip) await collectFee({ lamports: totalLamports, source: `campaign:${campaign.id}`, onChain: false });
   const drops = scatterDrops(
     { centerLat: body.centerLat, centerLng: body.centerLng, radiusM: body.radiusM },
     body.tiers,
@@ -60,10 +64,10 @@ export const POST = handler(async (req) => {
   await prisma.drop.createMany({ data: drops });
 
   return json({
-    campaign: { id: campaign.id, status: campaign.status, totalCents, dropCount: drops.length },
+    campaign: { id: campaign.id, status: campaign.status, totalLamports, dropCount: drops.length },
     funding: skip
       ? null
-      : { treasury: treasuryAddress()?.toBase58() ?? null, memo: campaign.id, amountCents: totalCents },
+      : { treasury: treasuryAddress()?.toBase58() ?? null, memo: campaign.id, lamports: totalWithFee(totalLamports), feeLamports: feeFor(totalLamports), wallet: me.wallet },
   });
 });
 

@@ -7,19 +7,20 @@ import { usePrivy } from "@privy-io/react-auth";
 import { ChevronRight, Eye, EyeOff, LogOut, ArrowUp, Plus, Copy, Check, Target, Shield } from "lucide-react";
 import { Coin } from "./Coin";
 import { DropsTokenCard } from "./DropsToken";
+import { PoolCard } from "./PoolCard";
 import { PRIVY_APP_ID } from "./Providers";
 import { api } from "@/lib/client";
-import { formatDistance, formatUsd } from "@/lib/geo";
+import { formatDistance, formatSol } from "@/lib/geo";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import type { PublicDrop } from "@/lib/drops";
 import { explorerTxUrl } from "@/lib/solana";
 
 type Me = {
-  user: { id: string; wallet: string; handle: string | null; role: string };
-  totals: { foundCents: number; paidCents: number; pendingCents: number; drops: number };
+  user: { id: string; wallet: string; handle: string | null; role: string; loginMethod: string | null; email: string | null; custodial: boolean };
+  totals: { foundLamports: number; paidLamports: number; pendingLamports: number; drops: number };
   claims: {
     id: string;
-    amountCents: number;
+    amountLamports: number;
     payoutStatus: string;
     payoutTxSig: string | null;
     createdAt: string;
@@ -30,7 +31,7 @@ type Me = {
     id: string;
     title: string;
     status: string;
-    totalCents: number;
+    totalLamports: number;
     remaining: number;
     areaName: string | null;
   }[];
@@ -52,8 +53,7 @@ export function Home() {
     api<{ nearest: PublicDrop | null }>(url).then((r) => setNearest(r.nearest)).catch(() => {});
   }, [position?.lat, position?.lng]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const total = me?.totals.foundCents ?? 0;
-  const [dollars, cents] = (total / 100).toFixed(2).split(".");
+  const total = me?.totals.foundLamports ?? 0;
 
   return (
     <main className="page px-5 pt-6 pb-32 lg:pb-10">
@@ -64,7 +64,7 @@ export function Home() {
           <Coin size={40} />
           <div className="min-w-0 flex-1">
             <div className="truncate text-[15px] font-semibold">
-              A {formatUsd(nearest.amountCents, { compact: true })} drop is {formatDistance(nearest.distanceM)} away
+              A {formatSol(nearest.amountLamports, { compact: true })} drop is {formatDistance(nearest.distanceM)} away
             </div>
             <div className="truncate text-xs text-muted">
               {nearest.campaign.areaName ? `${nearest.campaign.areaName} · ` : ""}
@@ -84,16 +84,16 @@ export function Home() {
         </button>
       </div>
       <div className="mt-1 text-[52px] font-bold leading-none tracking-tight">
-        {hidden ? "$•••" : (
+        {hidden ? "◎•••" : (
           <>
-            ${Number(dollars).toLocaleString()}
-            <span className="text-[30px] text-faint">.{cents}</span>
+            {formatSol(total, { compact: true })}
+            <span className="ml-2 text-[22px] font-semibold text-faint">SOL</span>
           </>
         )}
       </div>
-      {me && me.totals.pendingCents > 0 && (
+      {me && me.totals.pendingLamports > 0 && (
         <div className="mt-2 text-xs text-muted">
-          {formatUsd(me.totals.pendingCents)} pending payout
+          {formatSol(me.totals.pendingLamports)} pending payout
         </div>
       )}
 
@@ -109,7 +109,8 @@ export function Home() {
         </Link>
       )}
 
-      <div className="mt-8">
+      <div className="mt-8 space-y-3">
+        <PoolCard />
         <DropsTokenCard />
       </div>
       </div>
@@ -128,7 +129,7 @@ export function Home() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-semibold">{formatUsd(c.amountCents, { compact: true })}</div>
+                  <div className="text-sm font-semibold">{formatSol(c.amountLamports, { compact: true })}</div>
                   <PayoutBadge status={c.payoutStatus} sig={c.payoutTxSig} />
                 </div>
               </div>
@@ -150,7 +151,7 @@ export function Home() {
                     {c.remaining} left · {c.status.toLowerCase()}
                   </div>
                 </div>
-                <div className="text-sm font-semibold">{formatUsd(c.totalCents, { compact: true })}</div>
+                <div className="text-sm font-semibold">{formatSol(c.totalLamports, { compact: true })}</div>
                 <ChevronRight className="text-faint" size={16} />
               </Link>
             ))}

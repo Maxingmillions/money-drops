@@ -17,13 +17,14 @@ export const GET = handler(async () => {
     queue: rows.map((s) => ({
       id: s.id,
       videoUrl: s.videoUrl,
+      files: s.files,
       note: s.note,
       createdAt: s.createdAt.toISOString(),
       user: s.user.handle ?? shortWallet(s.user.wallet),
       bounty: {
         id: s.bounty.id,
         title: s.bounty.title,
-        rewardCents: s.bounty.rewardCents,
+        rewardLamports: s.bounty.rewardLamports,
         areaName: s.bounty.areaName,
         creator: s.bounty.creator.handle ?? shortWallet(s.bounty.creator.wallet),
       },

@@ -4,6 +4,7 @@ import { bountyView } from "@/lib/bounties";
 import { isMod } from "@/lib/roles";
 import { shortWallet } from "@/lib/drops";
 import { treasuryAddress } from "@/lib/solana";
+import { feeFor, totalWithFee } from "@/lib/pool";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -35,6 +36,7 @@ export const GET = handler<Ctx>(async (req, { params }) => {
       user: s.user.handle ?? shortWallet(s.user.wallet),
       mine: s.userId === me.id,
       videoUrl: s.videoUrl,
+      files: s.files,
       note: s.note,
       status: s.status,
       reviewNote: s.reviewNote,
@@ -51,7 +53,7 @@ export const GET = handler<Ctx>(async (req, { params }) => {
     isCreator,
     funding:
       b.status === "DRAFT" && isCreator
-        ? { treasury: treasuryAddress()?.toBase58() ?? null, memo: b.id, amountCents: b.rewardCents * b.maxWinners }
+        ? { treasury: treasuryAddress()?.toBase58() ?? null, memo: b.id, lamports: totalWithFee(b.rewardLamports * b.maxWinners), feeLamports: feeFor(b.rewardLamports * b.maxWinners), wallet: me.wallet }
         : null,
   });
 });

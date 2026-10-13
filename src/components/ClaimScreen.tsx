@@ -6,13 +6,13 @@ import { X, Share2, Check } from "lucide-react";
 import { Coin } from "./Coin";
 import { SolCoin } from "./SolCoin";
 import { api } from "@/lib/client";
-import { formatUsd } from "@/lib/geo";
+import { formatSol } from "@/lib/geo";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import type { PublicDrop } from "@/lib/drops";
 import { explorerTxUrl } from "@/lib/solana";
 
 type ClaimResult = {
-  amountCents: number;
+  amountLamports: number;
   payoutStatus: string;
   payoutTxSig: string | null;
   confirmedInMs: number;
@@ -113,7 +113,7 @@ export function ClaimScreen({ dropId }: { dropId: string }) {
             <div className="mt-6 h-2 w-36 rounded-full bg-white/30 blur-[2px]" />
             <div className="mt-8 text-center text-white drop-shadow">
               <div className="text-[26px] font-bold">
-                {drop ? `${formatUsd(drop.amountCents, { compact: true })} drop` : "Drop"}
+                {drop ? `${formatSol(drop.amountLamports, { compact: true })} drop` : "Drop"}
               </div>
               <div className="text-sm text-white/80">
                 {drop ? `Hidden by ${drop.campaign.creator}${drop.campaign.areaName ? ` · ${drop.campaign.areaName}` : ""}` : ""}
@@ -159,9 +159,9 @@ export function ClaimScreen({ dropId }: { dropId: string }) {
             <SolCoin size={110} />
           </div>
           <div className="card px-5 pb-5 pt-12 text-center">
-            <div className="text-[24px] font-bold">You found {formatUsd(result.amountCents, { compact: true })}</div>
+            <div className="text-[24px] font-bold">You found {formatSol(result.amountLamports, { compact: true })}</div>
             <div className="text-sm text-muted">
-              {result.amountCents / 100} USDC from {drop?.campaign.creator ?? "a stranger"}
+              {formatSol(result.amountLamports)} from {drop?.campaign.creator ?? "a stranger"}
             </div>
             <div className="mt-2">
               {result.payoutStatus === "PAID" ? (
@@ -197,7 +197,7 @@ export function ClaimScreen({ dropId }: { dropId: string }) {
                 onClick={() =>
                   navigator.share?.({
                     title: "Drops",
-                    text: `I just found ${formatUsd(result.amountCents, { compact: true })} hidden in ${result.areaName ?? "the wild"} on Drops!`,
+                    text: `I just found ${formatSol(result.amountLamports, { compact: true })} hidden in ${result.areaName ?? "the wild"} on Drops!`,
                   }).catch(() => {})
                 }
               >

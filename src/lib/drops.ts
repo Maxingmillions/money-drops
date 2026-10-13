@@ -6,7 +6,7 @@ import { devSkipFunding, payout, treasuryKeypair } from "./solana";
 
 export type PublicDrop = {
   id: string;
-  amountCents: number;
+  amountLamports: number;
   lat: number;
   lng: number;
   /** true when lat/lng is the real spot (hunter is inside revealRadius). */
@@ -25,7 +25,7 @@ export type PublicDrop = {
     remaining: number;
     bigRemaining: number;
     bigTotal: number;
-    totalCents: number;
+    totalLamports: number;
   };
 };
 
@@ -69,7 +69,7 @@ export async function nearbyDrops(at: LatLng, radiusM: number, user: LatLng | nu
       const s = stats.get(d.campaignId)!;
       return {
         id: d.id,
-        amountCents: d.amountCents,
+        amountLamports: d.amountLamports,
         lat: pos.lat,
         lng: pos.lng,
         exact,
@@ -84,7 +84,7 @@ export async function nearbyDrops(at: LatLng, radiusM: number, user: LatLng | nu
           revealRadiusM: d.campaign.revealRadiusM,
           claimRadiusM: d.campaign.claimRadiusM,
           endsAt: d.campaign.endsAt?.toISOString() ?? null,
-          totalCents: d.campaign.totalCents,
+          totalLamports: d.campaign.totalLamports,
           ...s,
         },
       };
@@ -97,7 +97,7 @@ export async function nearbyDrops(at: LatLng, radiusM: number, user: LatLng | nu
 export async function campaignOverview() {
   const campaigns = await prisma.campaign.findMany({
     where: { status: "ACTIVE" },
-    include: { creator: true, drops: { select: { status: true, amountCents: true } } },
+    include: { creator: true, drops: { select: { status: true, amountLamports: true } } },
   });
   const now = new Date();
   return campaigns
@@ -113,7 +113,7 @@ export async function campaignOverview() {
         lng: c.centerLng,
         radiusM: c.radiusM,
         remaining: hidden.length,
-        remainingCents: hidden.reduce((s, d) => s + d.amountCents, 0),
+        remainingLamports: hidden.reduce((s, d) => s + d.amountLamports, 0),
       };
     })
     .filter((c) => c.remaining > 0);
@@ -124,7 +124,7 @@ export async function campaignStats(campaignIds: string[]) {
   if (campaignIds.length === 0) return map;
   const rows = await prisma.drop.findMany({
     where: { campaignId: { in: campaignIds } },
-    select: { campaignId: true, amountCents: true, status: true },
+    select: { campaignId: true, amountLamports: true, status: true },
   });
   const byCampaign = new Map<string, typeof rows>();
   for (const r of rows) {
@@ -133,8 +133,8 @@ export async function campaignStats(campaignIds: string[]) {
     byCampaign.set(r.campaignId, list);
   }
   for (const [id, list] of byCampaign) {
-    const maxAmount = Math.max(...list.map((r) => r.amountCents));
-    const big = list.filter((r) => r.amountCents === maxAmount);
+    const maxAmount = Math.max(...list.map((r) => r.amountLamports));
+    const big = list.filter((r) => r.amountLamports === maxAmount);
     map.set(id, {
       remaining: list.filter((r) => r.status === "HIDDEN").length,
       bigRemaining: big.filter((r) => r.status === "HIDDEN").length,
@@ -160,7 +160,7 @@ export async function dropForHunter(dropId: string, at: LatLng | null): Promise<
   const pos = exact ? { lat: d.lat, lng: d.lng } : fuzzPosition(d.id, d, d.campaign.searchRadiusM, d.campaign.revealRadiusM);
   return {
     id: d.id,
-    amountCents: d.amountCents,
+    amountLamports: d.amountLamports,
     lat: pos.lat,
     lng: pos.lng,
     exact,
@@ -175,7 +175,7 @@ export async function dropForHunter(dropId: string, at: LatLng | null): Promise<
       revealRadiusM: d.campaign.revealRadiusM,
       claimRadiusM: d.campaign.claimRadiusM,
       endsAt: d.campaign.endsAt?.toISOString() ?? null,
-      totalCents: d.campaign.totalCents,
+      totalLamports: d.campaign.totalLamports,
       ...s,
     },
   };
@@ -230,7 +230,7 @@ export async function claimDrop(opts: {
       dropId: drop.id,
       campaignId: drop.campaignId,
       userId: opts.userId,
-      amountCents: drop.amountCents,
+      amountLamports: drop.amountLamports,
       lat: opts.at.lat,
       lng: opts.at.lng,
       distanceM: dist,
@@ -245,7 +245,7 @@ export async function claimDrop(opts: {
   const canPay = Boolean(drop.campaign.fundingTxSig) && Boolean(treasuryKeypair());
   if (canPay) {
     try {
-      payoutTxSig = await payout({ recipient: opts.wallet, cents: drop.amountCents });
+      payoutTxSig = await payout({ recipient: opts.wallet, lamports: drop.amountLamports });
       payoutStatus = "PAID";
     } catch (e) {
       payoutStatus = "FAILED";
@@ -263,7 +263,7 @@ export async function claimDrop(opts: {
   const stats = (await campaignStats([drop.campaignId])).get(drop.campaignId)!;
   return {
     claimId: claim.id,
-    amountCents: drop.amountCents,
+    amountLamports: drop.amountLamports,
     payoutStatus,
     payoutTxSig,
     confirmedInMs: Date.now() - started,

@@ -7,7 +7,7 @@ import { X, Compass as CompassIcon } from "lucide-react";
 import { DropMap } from "./DropMap";
 import { Coin } from "./Coin";
 import { api } from "@/lib/client";
-import { bearingDeg, formatUsd } from "@/lib/geo";
+import { bearingDeg, formatSol } from "@/lib/geo";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useCompassHeading } from "@/hooks/useCompassHeading";
 import type { PublicDrop } from "@/lib/drops";
@@ -73,7 +73,7 @@ export function HuntScreen({ dropId }: { dropId: string }) {
         </Link>
         <div className="flex-1 text-center">
           <div className="text-[15px] font-semibold">
-            {drop ? `Hunting ${formatUsd(drop.amountCents, { compact: true })}` : "Hunting"}
+            {drop ? `Hunting ${formatSol(drop.amountLamports, { compact: true })}` : "Hunting"}
           </div>
           <div className="text-xs text-muted">{drop?.campaign.areaName ?? drop?.campaign.title ?? ""}</div>
         </div>
@@ -129,7 +129,7 @@ export function HuntScreen({ dropId }: { dropId: string }) {
           <div className="mt-4 hidden w-full max-w-[420px] lg:block">
             {canClaim && (
               <button className="btn btn-primary w-full" onClick={() => router.push(`/claim/${dropId}`)}>
-                You&apos;re here · Claim {formatUsd(drop!.amountCents, { compact: true })}
+                You&apos;re here · Claim {formatSol(drop!.amountLamports, { compact: true })}
               </button>
             )}
           </div>
@@ -141,7 +141,7 @@ export function HuntScreen({ dropId }: { dropId: string }) {
             <DropMap
               center={mapCenter}
               zoom={16}
-              drops={[{ id: drop.id, lat: drop.lat, lng: drop.lng, amountCents: drop.amountCents, exact: drop.exact, searchRadiusM: drop.campaign.searchRadiusM }]}
+              drops={[{ id: drop.id, lat: drop.lat, lng: drop.lng, amountLamports: drop.amountLamports, exact: drop.exact, searchRadiusM: drop.campaign.searchRadiusM }]}
               me={position}
               interactive={false}
               followKey={`${position?.lat ?? ""},${position?.lng ?? ""}`}
@@ -154,7 +154,7 @@ export function HuntScreen({ dropId }: { dropId: string }) {
       <div className="mt-auto pt-5 lg:hidden">
         {canClaim && (
           <button className="btn btn-primary w-full" onClick={() => router.push(`/claim/${dropId}`)}>
-            You&apos;re here · Claim {formatUsd(drop!.amountCents, { compact: true })}
+            You&apos;re here · Claim {formatSol(drop!.amountLamports, { compact: true })}
           </button>
         )}
       </div>

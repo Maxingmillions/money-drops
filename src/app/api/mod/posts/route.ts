@@ -10,7 +10,7 @@ export const GET = handler(async () => {
   const [campaigns, bounties, team] = await Promise.all([
     prisma.campaign.findMany({
       where: { status: { in: ["ACTIVE", "DRAFT", "ENDED"] } },
-      include: { creator: true, drops: { select: { status: true, amountCents: true } } },
+      include: { creator: true, drops: { select: { status: true, amountLamports: true } } },
       orderBy: { createdAt: "desc" },
       take: 200,
     }),
@@ -29,8 +29,8 @@ export const GET = handler(async () => {
       title: c.title,
       creator: c.creator.handle ?? shortWallet(c.creator.wallet),
       status: c.status,
-      totalCents: c.totalCents,
-      remainingCents: c.drops.filter((d) => d.status === "HIDDEN").reduce((s, d) => s + d.amountCents, 0),
+      totalLamports: c.totalLamports,
+      remainingLamports: c.drops.filter((d) => d.status === "HIDDEN").reduce((s, d) => s + d.amountLamports, 0),
       remaining: c.drops.filter((d) => d.status === "HIDDEN").length,
       dropCount: c.drops.length,
       areaName: c.areaName,
@@ -42,7 +42,7 @@ export const GET = handler(async () => {
       title: b.title,
       creator: b.creator.handle ?? shortWallet(b.creator.wallet),
       status: b.status,
-      rewardCents: b.rewardCents,
+      rewardLamports: b.rewardLamports,
       maxWinners: b.maxWinners,
       approved: b.submissions.filter((s) => s.status === "APPROVED").length,
       pending: b.submissions.filter((s) => s.status === "PENDING").length,

@@ -6,7 +6,7 @@ import { shortWallet } from "./drops";
 import { devSkipFunding, payout, treasuryKeypair } from "./solana";
 
 export function bountyView(b: {
-  id: string; title: string; description: string; rewardCents: number; lat: number | null; lng: number | null;
+  id: string; title: string; description: string; rewardLamports: number; lat: number | null; lng: number | null;
   radiusM: number | null; areaName: string | null; deadline: Date | null; maxWinners: number; status: string;
   fundingTxSig: string | null; createdAt: Date; creatorId: string;
   creator: { handle: string | null; wallet: string };
@@ -17,7 +17,7 @@ export function bountyView(b: {
     id: b.id,
     title: b.title,
     description: b.description,
-    rewardCents: b.rewardCents,
+    rewardLamports: b.rewardLamports,
     lat: b.lat,
     lng: b.lng,
     radiusM: b.radiusM,
@@ -56,7 +56,7 @@ export async function approveSubmission(submissionId: string, reviewerId: string
   const canPay = Boolean(sub.bounty.fundingTxSig) && Boolean(treasuryKeypair());
   if (canPay) {
     try {
-      payoutTxSig = await payout({ recipient: sub.user.wallet, cents: sub.bounty.rewardCents });
+      payoutTxSig = await payout({ recipient: sub.user.wallet, lamports: sub.bounty.rewardLamports });
       payoutStatus = "PAID";
     } catch (e) {
       payoutStatus = "FAILED";

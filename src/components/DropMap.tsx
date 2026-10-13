@@ -23,7 +23,7 @@ export type MapDrop = {
   id: string;
   lat: number;
   lng: number;
-  amountCents: number;
+  amountLamports: number;
   /** true when lat/lng is the real spot. */
   exact?: boolean;
   /** Search circle radius (metres) drawn around approximate drops. */
@@ -31,7 +31,7 @@ export type MapDrop = {
 };
 
 /** One bubble per live hunt, shown when zoomed out to city / world level. */
-export type MapHunt = { id: string; title: string; lat: number; lng: number; remaining: number; remainingCents: number };
+export type MapHunt = { id: string; title: string; lat: number; lng: number; remaining: number; remainingLamports: number };
 
 export type Viewport = { center: LatLng; radiusM: number; zoom: number };
 
@@ -65,7 +65,8 @@ const DETAIL_ZOOM = 14;
 
 const LOGO_SVG = `<svg viewBox="0 0 64 64" aria-hidden><defs><linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#14F195"/><stop offset="1" stop-color="#9945FF"/></linearGradient></defs><g fill="url(#g)"><path d="M22 18h26l-6 6H16z"/><path d="M16 29h26l6 6H22z"/><path d="M22 40h26l-6 6H16z"/></g></svg>`;
 
-const usd = (cents: number) => `$${Math.round(cents / 100).toLocaleString()}`;
+import { formatSol } from "@/lib/geo";
+const usd = (lamports: number) => formatSol(lamports, { compact: true });
 
 function circlePolygon(center: LatLng, radiusM: number, steps = 48) {
   const coords: [number, number][] = [];
@@ -153,7 +154,7 @@ export function DropMap({
         cluster: true,
         clusterRadius: 56,
         clusterMaxZoom: 16,
-        clusterProperties: { total: ["+", ["get", "amountCents"]] },
+        clusterProperties: { total: ["+", ["get", "amountLamports"]] },
       });
       m.addLayer({ id: "search-fill", type: "fill", source: "search", paint: { "fill-color": "#8b3dff", "fill-opacity": 0.1 } });
       m.addLayer({ id: "search-line", type: "line", source: "search", paint: { "line-color": "#8b3dff", "line-opacity": 0.55, "line-width": 1.5, "line-dasharray": [2, 2] } });
@@ -217,7 +218,7 @@ export function DropMap({
           mk = new Marker({ element: node, anchor: "center" }).setLngLat([h.lng, h.lat]).addTo(m);
           huntMarkers.current.set(h.id, mk);
         }
-        mk.getElement().querySelector("span")!.textContent = `${usd(h.remainingCents)} · ${h.remaining} drops`;
+        mk.getElement().querySelector("span")!.textContent = `${usd(h.remainingLamports)} · ${h.remaining} drops`;
       }
     }
     for (const [id, mk] of huntMarkers.current) {
@@ -261,8 +262,8 @@ export function DropMap({
           mk.getElement().querySelector("span")!.textContent = `${usd(Number(p.total))} · ${p.point_count}`;
         } else {
           const id = String(p.id);
-          const amountCents = Number(p.amountCents);
-          const big = bigRef.current !== undefined && amountCents >= bigRef.current;
+          const amountLamports = Number(p.amountLamports);
+          const big = bigRef.current !== undefined && amountLamports >= bigRef.current;
           if (!mk) {
             const node = document.createElement("div");
             node.className = "md-marker";
@@ -281,9 +282,9 @@ export function DropMap({
           node.classList.toggle("big", big);
           node.classList.toggle("selected", id === selectedRef.current);
           const tag = node.querySelector<HTMLElement>(".tag")!;
-          const showTag = detail && (big || amountCents >= 2000 || id === selectedRef.current);
+          const showTag = detail && (big || amountLamports >= 2000 || id === selectedRef.current);
           tag.style.display = showTag ? "block" : "none";
-          tag.textContent = usd(amountCents);
+          tag.textContent = usd(amountLamports);
           node.querySelector<HTMLElement>(".halo")!.style.display = detail && p.exact === true ? "block" : "none";
         }
       }
@@ -324,19 +325,19 @@ export function DropMap({
         features: drops.map((d) => ({
           type: "Feature",
           geometry: { type: "Point", coordinates: [d.lng, d.lat] },
-          properties: { id: d.id, amountCents: d.amountCents, exact: Boolean(d.exact), searchRadiusM: d.searchRadiusM ?? 0 },
+          properties: { id: d.id, amountLamports: d.amountLamports, exact: Boolean(d.exact), searchRadiusM: d.searchRadiusM ?? 0 },
         })),
       });
       syncAll();
     };
     if (loaded.current) apply();
     else m.once("load", apply);
-  }, [drops]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [drops]);
 
   // Re-sync when selection, hunts or big threshold change.
   useEffect(() => {
     syncAll();
-  }, [selectedId, bigAmountCents, hunts]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedId, bigAmountCents, hunts]);
 
   // Me marker.
   useEffect(() => {

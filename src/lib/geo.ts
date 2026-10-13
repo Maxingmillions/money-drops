@@ -82,7 +82,7 @@ export function fuzzPosition(id: string, exact: LatLng, searchRadiusM: number, r
   return offsetM(exact, dist, bearing);
 }
 
-export type Tier = { count: number; amountCents: number };
+export type Tier = { count: number; amountLamports: number };
 
 /** Scatter drops uniformly inside a circle. */
 export function scatterDrops(
@@ -90,26 +90,29 @@ export function scatterDrops(
   tiers: Tier[],
   rand: () => number = Math.random,
 ) {
-  const out: { amountCents: number; lat: number; lng: number }[] = [];
+  const out: { amountLamports: number; lat: number; lng: number }[] = [];
   for (const tier of tiers) {
     for (let i = 0; i < tier.count; i++) {
       // sqrt for uniform density over the disc
       const r = Math.sqrt(rand()) * area.radiusM;
       const θ = rand() * 360;
       const p = offsetM({ lat: area.centerLat, lng: area.centerLng }, r, θ);
-      out.push({ amountCents: tier.amountCents, lat: p.lat, lng: p.lng });
+      out.push({ amountLamports: tier.amountLamports, lat: p.lat, lng: p.lng });
     }
   }
   return out;
 }
 
-export function formatUsd(cents: number, opts: { compact?: boolean } = {}) {
-  const dollars = cents / 100;
-  if (opts.compact && Number.isInteger(dollars)) return `$${dollars.toLocaleString()}`;
-  return `$${dollars.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+export const LAMPORTS = 1_000_000_000;
+export const solToLamports = (sol: number) => Math.round(sol * LAMPORTS);
+export const lamportsToSol = (lamports: number) => lamports / LAMPORTS;
+
+/** "0.5 SOL", "12 SOL", "0.0025 SOL". `compact` drops the unit suffix to "◎0.5". */
+export function formatSol(lamports: number, opts: { compact?: boolean } = {}) {
+  const sol = lamportsToSol(lamports);
+  const digits = sol >= 100 ? 1 : sol >= 1 ? 2 : sol >= 0.01 ? 3 : 4;
+  const n = sol.toLocaleString(undefined, { maximumFractionDigits: digits });
+  return opts.compact ? `◎${n}` : `${n} SOL`;
 }
 
 export function formatDistance(m: number) {

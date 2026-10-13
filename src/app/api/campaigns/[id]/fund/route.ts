@@ -2,6 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { ApiError, handler, json, parseBody, requireSession } from "@/lib/api";
 import { verifyDeposit } from "@/lib/solana";
+import { collectFee, totalWithFee } from "@/lib/pool";
 
 type Ctx = { params: Promise<{ id: string }> };
 const Body = z.object({ signature: z.string().min(64).max(128) });
@@ -20,12 +21,13 @@ export const POST = handler<Ctx>(async (req, { params }) => {
   const used = await prisma.campaign.findUnique({ where: { fundingTxSig: signature } });
   if (used) throw new ApiError(409, "That transaction already funded a campaign");
 
-  const check = await verifyDeposit({ signature, expectedCents: c.totalCents, memo: c.id });
+  const check = await verifyDeposit({ signature, expectedLamports: totalWithFee(c.totalLamports), memo: c.id });
   if (!check.ok) throw new ApiError(400, check.reason);
 
   await prisma.campaign.update({
     where: { id },
     data: { status: "ACTIVE", fundingTxSig: signature, fundedAt: new Date() },
   });
+  await collectFee({ lamports: c.totalLamports, source: `campaign:${c.id}`, onChain: true });
   return json({ ok: true, status: "ACTIVE" });
 });

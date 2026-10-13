@@ -1,4 +1,5 @@
 import { DropsTokenCard, DropsTokenChart } from "@/components/DropsToken";
+import { PoolCard } from "@/components/PoolCard";
 
 export const metadata = { title: "$DROPS" };
 
@@ -10,6 +11,9 @@ export default function TokenPage() {
         <DropsTokenCard external />
       </div>
       <DropsTokenChart />
+      <div className="mt-4">
+        <PoolCard />
+      </div>
     </main>
   );
 }

@@ -4,14 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, MapPin, Clock, Video, Shield } from "lucide-react";
 import { api } from "@/lib/client";
-import { formatDistance, formatUsd } from "@/lib/geo";
+import { formatDistance, formatSol } from "@/lib/geo";
 import { useGeolocation } from "@/hooks/useGeolocation";
 
 export type BountyItem = {
   id: string;
   title: string;
   description: string;
-  rewardCents: number;
+  rewardLamports: number;
   lat: number | null;
   lng: number | null;
   radiusM: number | null;
@@ -72,7 +72,7 @@ export function BountiesScreen({ isMod }: { isMod: boolean }) {
                 <div className="mt-0.5 line-clamp-2 text-sm text-muted">{b.description}</div>
               </div>
               <div className="shrink-0 rounded-2xl bg-accent-soft px-3 py-1.5 text-right">
-                <div className="text-lg font-bold leading-tight text-accent">{formatUsd(b.rewardCents, { compact: true })}</div>
+                <div className="text-lg font-bold leading-tight text-accent">{formatSol(b.rewardLamports, { compact: true })}</div>
                 <div className="text-[10px] font-semibold text-accent/70">USDC</div>
               </div>
             </div>

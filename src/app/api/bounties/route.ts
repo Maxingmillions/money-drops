@@ -2,16 +2,18 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { ApiError, handler, json, parseBody, requireSession } from "@/lib/api";
 import { bountyView } from "@/lib/bounties";
-import { devSkipFunding, treasuryAddress } from "@/lib/solana";
+import { requiresFunding, treasuryAddress } from "@/lib/solana";
+import { collectFee, feeFor, totalWithFee } from "@/lib/pool";
 
 const Body = z.object({
   title: z.string().trim().min(3).max(80),
   description: z.string().trim().min(10).max(2000),
-  rewardCents: z.number().int().min(100).max(10_000_000),
+  /** Lamports; min 0.001 SOL, max 10,000 SOL. */
+  rewardLamports: z.number().int().min(1_000_000).max(10_000_000_000_000),
   maxWinners: z.number().int().min(1).max(100).default(1),
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),
-  radiusM: z.number().int().min(20).max(50_000).optional(),
+  radiusM: z.number().int().min(20).max(100_000).optional(),
   areaName: z.string().trim().max(80).optional(),
   deadline: z.string().datetime().optional(),
 });
@@ -20,13 +22,14 @@ export const POST = handler(async (req) => {
   const session = await requireSession();
   const body = await parseBody(req, Body);
   if ((body.lat == null) !== (body.lng == null)) throw new ApiError(400, "Location needs both lat and lng");
-  const skip = devSkipFunding();
+  const me = await prisma.user.findUniqueOrThrow({ where: { id: session.userId } });
+  const skip = !requiresFunding(me.loginMethod);
   const bounty = await prisma.bounty.create({
     data: {
       creatorId: session.userId,
       title: body.title,
       description: body.description,
-      rewardCents: body.rewardCents,
+      rewardLamports: body.rewardLamports,
       maxWinners: body.maxWinners,
       lat: body.lat ?? null,
       lng: body.lng ?? null,
@@ -37,10 +40,11 @@ export const POST = handler(async (req) => {
       fundedAt: skip ? new Date() : null,
     },
   });
-  const totalCents = body.rewardCents * body.maxWinners;
+  const totalLamports = body.rewardLamports * body.maxWinners;
+  if (skip) await collectFee({ lamports: totalLamports, source: `bounty:${bounty.id}`, onChain: false });
   return json({
     bounty: { id: bounty.id, status: bounty.status },
-    funding: skip ? null : { treasury: treasuryAddress()?.toBase58() ?? null, memo: bounty.id, amountCents: totalCents },
+    funding: skip ? null : { treasury: treasuryAddress()?.toBase58() ?? null, memo: bounty.id, lamports: totalWithFee(totalLamports), feeLamports: feeFor(totalLamports), wallet: me.wallet },
   });
 });
 

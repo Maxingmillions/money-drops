@@ -7,7 +7,8 @@ import { X, Lock, MapPin } from "lucide-react";
 import { DropMap } from "./DropMap";
 import { LocationSearch } from "./LocationSearch";
 import { api } from "@/lib/client";
-import { formatUsd, type LatLng } from "@/lib/geo";
+import { formatSol, solToLamports, type LatLng } from "@/lib/geo";
+import { RadiusInput } from "./HideScreen";
 import { useGeolocation } from "@/hooks/useGeolocation";
 
 const FALLBACK: LatLng = { lat: 35.6717, lng: 139.6949 };
@@ -17,7 +18,7 @@ export function NewBountyScreen() {
   const { position } = useGeolocation({ watch: false });
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [reward, setReward] = useState("25");
+  const [reward, setReward] = useState("0.25");
   const [winners, setWinners] = useState(1);
   const [useLocation, setUseLocation] = useState(true);
   const [center, setCenter] = useState<LatLng | null>(null);
@@ -28,14 +29,15 @@ export function NewBountyScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const mapCenter = center ?? position ?? FALLBACK;
-  const rewardCents = Math.max(0, Math.round(Number(reward) * 100)) || 0;
-  const totalCents = rewardCents * winners;
+  const rewardLamports = Math.max(0, solToLamports(Number(reward) || 0));
+  const clampedRadius = Math.min(100_000, Math.max(20, Math.round(radiusM) || 20));
+  const totalLamports = rewardLamports * winners;
 
   const submit = async () => {
     setError(null);
     if (title.trim().length < 3) return setError("Give the bounty a title");
     if (description.trim().length < 10) return setError("Describe what someone has to do (10+ characters)");
-    if (rewardCents < 100) return setError("Reward must be at least $1");
+    if (rewardLamports < 1_000_000) return setError("Reward must be at least 0.001 SOL");
     const c = useLocation ? center ?? position : null;
     if (useLocation && !c) return setError("Tap the map to set where this happens, or turn location off");
     setBusy(true);
@@ -45,9 +47,9 @@ export function NewBountyScreen() {
         json: {
           title: title.trim(),
           description: description.trim(),
-          rewardCents,
+          rewardLamports,
           maxWinners: winners,
-          ...(c ? { lat: c.lat, lng: c.lng, radiusM, areaName: areaName.trim() || undefined } : {}),
+          ...(c ? { lat: c.lat, lng: c.lng, radiusM: clampedRadius, areaName: areaName.trim() || undefined } : {}),
           ...(deadline ? { deadline: new Date(deadline).toISOString() } : {}),
         },
       });
@@ -61,7 +63,7 @@ export function NewBountyScreen() {
   return (
     <main className="min-h-dvh pb-28 lg:grid lg:min-h-0 lg:grid-cols-[480px_minmax(0,1fr)] lg:pb-0">
       <div className={`relative h-[220px] w-full overflow-hidden rounded-b-[28px] lg:order-2 lg:h-dvh lg:rounded-none ${useLocation ? "" : "opacity-40"}`}>
-        <DropMap center={mapCenter} zoom={14} me={position} circle={useLocation ? { center: mapCenter, radiusM } : null} onTap={(p) => useLocation && setCenter(p)} followKey={`${mapCenter.lat},${mapCenter.lng}`} attribution="bottom-left" />
+        <DropMap center={mapCenter} zoom={14} me={position} circle={useLocation ? { center: mapCenter, radiusM: clampedRadius } : null} onTap={(p) => useLocation && setCenter(p)} followKey={`${mapCenter.lat},${mapCenter.lng}`} attribution="bottom-left" />
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center p-4 pt-[calc(env(safe-area-inset-top)+12px)] lg:hidden">
           <Link href="/bounties" className="icon-btn pointer-events-auto">
             <X size={18} />
@@ -101,9 +103,9 @@ export function NewBountyScreen() {
 
           <div className="grid grid-cols-2 gap-3">
             <label className="row-list block px-4 py-3">
-              <span className="label">Reward per winner</span>
+              <span className="label">Reward per winner (SOL)</span>
               <div className="flex items-center gap-1 text-2xl font-bold">
-                <span className="text-faint">$</span>
+                <span className="text-faint">◎</span>
                 <input className="w-full bg-transparent outline-none" inputMode="decimal" value={reward} onChange={(e) => setReward(e.target.value)} />
               </div>
             </label>
@@ -130,11 +132,11 @@ export function NewBountyScreen() {
                   <input className="input" placeholder="Place name (e.g. Santa Monica Pier)" value={areaName} onChange={(e) => setAreaName(e.target.value)} maxLength={80} />
                 </div>
                 <div className="px-4 py-3">
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between gap-3 text-sm">
                     <span className="text-muted">Area radius</span>
-                    <span className="font-semibold">{radiusM} m</span>
+                    <RadiusInput value={radiusM} onChange={setRadiusM} max={100_000} />
                   </div>
-                  <input type="range" min={20} max={5000} step={20} value={radiusM} onChange={(e) => setRadiusM(Number(e.target.value))} className="mt-2 w-full accent-accent" />
+                  <input type="range" min={20} max={5000} step={20} value={Math.min(5000, radiusM)} onChange={(e) => setRadiusM(Number(e.target.value))} className="mt-2 w-full accent-accent" />
                 </div>
               </>
             )}
@@ -146,11 +148,11 @@ export function NewBountyScreen() {
         </div>
 
         <p className="mt-4 text-center text-xs text-muted">
-          {formatUsd(totalCents, { compact: true })} is held until a mod approves a video submission, then paid to the winner.
+          {formatSol(totalLamports)} is held in escrow until a mod approves a video, then paid to the winner. Wallet accounts also pay a 5% fee.
         </p>
         {error && <p className="mt-3 text-center text-sm text-danger">{error}</p>}
-        <button className="btn btn-primary mt-4 w-full" disabled={busy || rewardCents < 100} onClick={submit}>
-          <Lock size={16} /> Post bounty · {formatUsd(totalCents, { compact: true })}
+        <button className="btn btn-primary mt-4 w-full" disabled={busy || rewardLamports < 1_000_000} onClick={submit}>
+          <Lock size={16} /> Post bounty · {formatSol(totalLamports, { compact: true })}
         </button>
       </div>
     </main>

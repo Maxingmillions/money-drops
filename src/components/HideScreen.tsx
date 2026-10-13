@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X, Lock, MapPin } from "lucide-react";
@@ -8,50 +8,53 @@ import { DropMap } from "./DropMap";
 import { LocationSearch } from "./LocationSearch";
 import { Coin } from "./Coin";
 import { api } from "@/lib/client";
-import { formatUsd, type LatLng } from "@/lib/geo";
+import { formatSol, solToLamports, type LatLng } from "@/lib/geo";
 import { useGeolocation } from "@/hooks/useGeolocation";
 
 const FALLBACK: LatLng = { lat: 35.6717, lng: 139.6949 };
-const MAX_RADIUS_M = 1600; // about a mile
+const MAX_RADIUS_M = 100_000; // slider goes to 5 km; type anything up to 100 km
 
 /** Hide money: amount, how many drops, where, how wide. That's it. */
 export function HideScreen() {
   const router = useRouter();
   const { position } = useGeolocation({ watch: false });
-  const [amount, setAmount] = useState("100");
+  const [amount, setAmount] = useState("1");
   const [count, setCount] = useState("10");
   const [center, setCenter] = useState<LatLng | null>(null);
   const [radiusM, setRadiusM] = useState(400);
+  const [searchRadiusM, setSearchRadiusM] = useState(80);
   const [areaName, setAreaName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const mapCenter = center ?? position ?? FALLBACK;
-  const totalCents = Math.max(0, Math.round(Number(amount) * 100)) || 0;
+  const totalLamports = Math.max(0, solToLamports(Number(amount) || 0));
   const drops = Math.max(0, Math.floor(Number(count))) || 0;
-  const perDropCents = drops > 0 ? Math.floor(totalCents / drops) : 0;
-  const valid = totalCents >= 100 && drops >= 1 && perDropCents >= 100 && drops <= 5000;
-  const searchRadiusM = useMemo(() => Math.min(300, Math.max(50, Math.round(radiusM / 5))), [radiusM]);
+  const perDropLamports = drops > 0 ? Math.floor(totalLamports / drops) : 0;
+  const MIN_DROP = 1_000_000; // 0.001 SOL
+  const valid = totalLamports >= MIN_DROP && drops >= 1 && perDropLamports >= MIN_DROP && drops <= 5000;
+  const clampedRadius = Math.min(MAX_RADIUS_M, Math.max(20, Math.round(radiusM) || 20));
+  const clampedSearch = Math.min(2000, Math.max(40, Math.round(searchRadiusM) || 40));
 
   const submit = async () => {
     setError(null);
-    if (!valid) return setError(perDropCents < 100 && drops > 0 ? "Each drop needs at least $1" : "Enter an amount and a number of drops");
+    if (!valid) return setError(perDropLamports < MIN_DROP && drops > 0 ? "Each drop needs at least 0.001 SOL" : "Enter an amount and a number of drops");
     const c = center ?? position;
     if (!c) return setError("Tap the map to choose where to hide the money");
     setBusy(true);
     try {
-      const r = await api<{ campaign: { id: string } }>("/api/campaigns", {
+      const r = await api<{ campaign: { id: string; status: string } }>("/api/campaigns", {
         method: "POST",
         json: {
-          title: areaName.trim() ? `${formatUsd(totalCents, { compact: true })} in ${areaName.trim()}` : `${formatUsd(totalCents, { compact: true })} drop`,
+          title: areaName.trim() ? `${formatSol(totalLamports, { compact: true })} in ${areaName.trim()}` : `${formatSol(totalLamports, { compact: true })} drop`,
           kind: "PROXIMITY",
-          tiers: [{ count: drops, amountCents: perDropCents }],
+          tiers: [{ count: drops, amountLamports: perDropLamports }],
           centerLat: c.lat,
           centerLng: c.lng,
-          radiusM,
+          radiusM: clampedRadius,
           areaName: areaName.trim() || undefined,
           perPersonLimit: 1,
-          searchRadiusM,
+          searchRadiusM: clampedSearch,
         },
       });
       router.push(`/campaigns/${r.campaign.id}`);
@@ -68,7 +71,7 @@ export function HideScreen() {
           center={mapCenter}
           zoom={14}
           me={position}
-          circle={{ center: mapCenter, radiusM }}
+          circle={{ center: mapCenter, radiusM: clampedRadius }}
           onTap={setCenter}
           followKey={`${mapCenter.lat},${mapCenter.lng}`}
           attribution="bottom-left"
@@ -103,17 +106,17 @@ export function HideScreen() {
         </div>
 
         <div className="mt-6 text-center">
-          <div className="text-[48px] font-bold leading-none tracking-tight">{formatUsd(totalCents, { compact: true })}</div>
+          <div className="text-[48px] font-bold leading-none tracking-tight">{formatSol(totalLamports, { compact: true })}</div>
           <div className="mt-1 text-sm text-muted">
-            USDC · {drops} {drops === 1 ? "drop" : "drops"} of {formatUsd(perDropCents, { compact: true })}
+            {drops} {drops === 1 ? "drop" : "drops"} of {formatSol(perDropLamports)}
           </div>
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3">
           <label className="row-list block px-4 py-3">
-            <span className="label">Amount (USDC)</span>
+            <span className="label">Amount (SOL)</span>
             <div className="flex items-center gap-1 text-2xl font-bold">
-              <span className="text-faint">$</span>
+              <span className="text-faint">◎</span>
               <input className="w-full bg-transparent outline-none" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
             </div>
           </label>
@@ -131,24 +134,41 @@ export function HideScreen() {
             <input className="input" placeholder="Area name (optional, e.g. Central Park)" value={areaName} onChange={(e) => setAreaName(e.target.value)} maxLength={60} />
           </div>
           <div className="px-4 py-3">
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center justify-between gap-3 text-sm">
               <span className="text-muted">Spread radius</span>
-              <span className="font-semibold">
-                {radiusM} m{radiusM >= 1600 ? " · ~1 mile" : radiusM >= 800 ? " · ~½ mile" : ""}
-              </span>
+              <RadiusInput value={radiusM} onChange={setRadiusM} max={MAX_RADIUS_M} />
             </div>
-            <input type="range" min={50} max={MAX_RADIUS_M} step={25} value={radiusM} onChange={(e) => setRadiusM(Number(e.target.value))} className="mt-2 w-full accent-accent" />
-            <p className="mt-1 text-xs text-muted">Drops are scattered inside this circle. Each one shows hunters a {searchRadiusM} m search area.</p>
+            <input type="range" min={50} max={5000} step={25} value={Math.min(5000, radiusM)} onChange={(e) => setRadiusM(Number(e.target.value))} className="mt-2 w-full accent-accent" />
+            <p className="mt-1 text-xs text-muted">Drops are scattered inside this circle. Type any distance up to 100 km.</p>
+          </div>
+          <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+            <span className="text-muted">Search circle per drop</span>
+            <RadiusInput value={searchRadiusM} onChange={setSearchRadiusM} max={2000} />
           </div>
         </div>
 
         {error && <p className="mt-3 text-center text-sm text-danger">{error}</p>}
 
         <button className="btn btn-primary mt-5 w-full" disabled={busy || !valid} onClick={submit}>
-          <Lock size={16} /> Hide {formatUsd(totalCents, { compact: true })}
+          <Lock size={16} /> Hide {formatSol(totalLamports, { compact: true })}
         </button>
-        <p className="mt-3 text-center text-xs text-faint">One drop per person. Money goes live right away.</p>
+        <p className="mt-3 text-center text-xs text-faint">One drop per person. Wallet accounts pay the amount plus a 5% fee on the next screen (half of the fee fills the community drop pool). Unclaimed drops come back to you.</p>
       </div>
     </main>
+  );
+}
+
+/** Metres input with km shorthand when large. */
+export function RadiusInput({ value, onChange, max }: { value: number; onChange: (v: number) => void; max: number }) {
+  return (
+    <span className="flex items-center gap-1 font-semibold">
+      <input
+        className="input !w-24 !py-1 text-right"
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => onChange(Math.min(max, Math.max(0, Number(e.target.value.replace(/[^0-9]/g, "")) || 0)))}
+      />
+      <span className="text-muted">m{value >= 1000 ? ` · ${(value / 1000).toFixed(value >= 10_000 ? 0 : 1)} km` : ""}</span>
+    </span>
   );
 }

@@ -2,21 +2,23 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, MapPin, Clock, Video, Check, X as XIcon, ExternalLink, Shield } from "lucide-react";
+import { ChevronLeft, MapPin, Clock, Video, Check, X as XIcon, ExternalLink, Shield, Paperclip } from "lucide-react";
+import { upload } from "@vercel/blob/client";
 import { DropMap } from "./DropMap";
 import { FundWithWallet } from "./FundWithWallet";
-import { PRIVY_APP_ID } from "./Providers";
 import { api } from "@/lib/client";
-import { formatDistance, formatUsd } from "@/lib/geo";
+import { formatDistance, formatSol } from "@/lib/geo";
 import { explorerTxUrl } from "@/lib/solana";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import type { BountyItem } from "./BountiesScreen";
 
+export type ProofFile = { pathname: string; contentType: string; size: number; name: string };
 type Sub = {
   id: string;
   user: string;
   mine: boolean;
-  videoUrl: string;
+  videoUrl: string | null;
+  files?: ProofFile[];
   note: string | null;
   status: string;
   reviewNote: string | null;
@@ -30,7 +32,7 @@ type Detail = {
   mine: string | null;
   canReview: boolean;
   isCreator: boolean;
-  funding: { treasury: string | null; memo: string; amountCents: number } | null;
+  funding: { treasury: string | null; memo: string; lamports: number; feeLamports: number; wallet: string } | null;
 };
 
 export function BountyScreen({ id }: { id: string }) {
@@ -59,7 +61,7 @@ export function BountyScreen({ id }: { id: string }) {
           <ChevronLeft size={18} />
         </Link>
         <h1 className="min-w-0 flex-1 truncate text-xl font-bold">{b.title}</h1>
-        <div className="rounded-2xl bg-accent-soft px-3 py-1.5 text-lg font-bold text-accent">{formatUsd(b.rewardCents, { compact: true })}</div>
+        <div className="rounded-2xl bg-accent-soft px-3 py-1.5 text-lg font-bold text-accent">{formatSol(b.rewardLamports, { compact: true })}</div>
       </div>
 
       <div className="mt-5 lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-8">
@@ -86,12 +88,12 @@ export function BountyScreen({ id }: { id: string }) {
 
           {data.funding && (
             <section className="card mt-5 p-4">
-              <h3 className="text-sm font-semibold">Fund this bounty to open it</h3>
-              <p className="mt-1 text-xs text-muted">{formatUsd(data.funding.amountCents)} USDC is held until mods approve a winner.</p>
-              {PRIVY_APP_ID && data.funding.treasury ? (
-                <FundWithWallet campaignId={b.id} amountCents={data.funding.amountCents} treasury={data.funding.treasury} onFunded={load} fundPath={`/api/bounties/${b.id}/fund`} />
+              <h3 className="text-sm font-semibold">Pay to open this bounty</h3>
+              <p className="mt-1 text-xs text-muted">{formatSol(data.funding.lamports)} from your wallet: the reward plus a {formatSol(data.funding.feeLamports)} fee (half of every fee feeds the community drop pool). Held until mods approve a winner.</p>
+              {data.funding.treasury ? (
+                <FundWithWallet memo={b.id} lamports={data.funding.lamports} treasury={data.funding.treasury} wallet={data.funding.wallet} fundPath={`/api/bounties/${b.id}/fund`} onFunded={load} />
               ) : (
-                <p className="mt-2 text-xs text-muted">Send the USDC to the escrow address with memo {b.id} (wallet funding UI needs Privy).</p>
+                <p className="mt-2 text-xs text-danger">Escrow wallet isn&apos;t configured on this server.</p>
               )}
             </section>
           )}
@@ -138,32 +140,111 @@ export function BountyScreen({ id }: { id: string }) {
 function SubmitForm({ bountyId, onDone }: { bountyId: string; onDone: () => void }) {
   const [url, setUrl] = useState("");
   const [note, setNote] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const hasLink = /^https?:\/\//.test(url);
+  const canSend = (hasLink || files.length > 0) && !busy;
+
+  const submit = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const uploaded: ProofFile[] = [];
+      for (const [i, f] of files.entries()) {
+        setProgress(`Uploading ${i + 1} of ${files.length}: ${f.name}`);
+        const me = await api<{ user: { id: string } }>("/api/me");
+        const blob = await upload(`submissions/${me.user.id}/${f.name}`, f, {
+          access: "private",
+          handleUploadUrl: "/api/uploads",
+          multipart: f.size > 20 * 1024 * 1024,
+        });
+        uploaded.push({ pathname: blob.pathname, contentType: f.type || "application/octet-stream", size: f.size, name: f.name });
+      }
+      setProgress(null);
+      await api(`/api/bounties/${bountyId}/submit`, {
+        method: "POST",
+        json: { videoUrl: hasLink ? url : undefined, note: note || undefined, files: uploaded },
+      });
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't submit");
+      setProgress(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="mt-2 space-y-2">
-      <input className="input" placeholder="Video link (YouTube, TikTok, X, Drive…)" value={url} onChange={(e) => setUrl(e.target.value.trim())} />
+      <label className="row-list block cursor-pointer px-4 py-3 text-sm">
+        <span className="flex items-center gap-2 font-semibold">
+          <Paperclip size={15} /> Photos, videos or files <span className="text-faint">· up to 3</span>
+        </span>
+        <input
+          type="file"
+          className="hidden"
+          multiple
+          accept="image/*,video/*,.pdf,.zip,.txt"
+          onChange={(e) => {
+            const picked = Array.from(e.target.files ?? []);
+            setFiles((cur) => [...cur, ...picked].slice(0, 3));
+            e.target.value = "";
+          }}
+        />
+        {files.length === 0 ? (
+          <span className="mt-1 block text-xs text-muted">Tap to choose. Only mods can see these until you&apos;re chosen.</span>
+        ) : (
+          <ul className="mt-2 space-y-1">
+            {files.map((f, i) => (
+              <li key={i} className="flex items-center gap-2 text-xs">
+                <span className="truncate">{f.name}</span>
+                <span className="text-faint">{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+                <button type="button" className="ml-auto text-danger" onClick={(ev) => { ev.preventDefault(); setFiles(files.filter((_, j) => j !== i)); }} aria-label="Remove">
+                  <XIcon size={14} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </label>
+      <input className="input" placeholder="Or a video link (YouTube, TikTok, X, Drive…)" value={url} onChange={(e) => setUrl(e.target.value.trim())} />
       <input className="input" placeholder="Anything the mods should know (optional)" value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} />
+      {progress && <p className="text-xs text-muted">{progress}</p>}
       {error && <p className="text-sm text-danger">{error}</p>}
-      <button
-        className="btn btn-primary w-full"
-        disabled={busy || !/^https?:\/\//.test(url)}
-        onClick={async () => {
-          setBusy(true);
-          setError(null);
-          try {
-            await api(`/api/bounties/${bountyId}/submit`, { method: "POST", json: { videoUrl: url, note: note || undefined } });
-            onDone();
-          } catch (e) {
-            setError(e instanceof Error ? e.message : "Couldn't submit");
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
+      <button className="btn btn-primary w-full" disabled={!canSend} onClick={submit}>
         <Video size={16} /> Submit for review
       </button>
-      <p className="text-center text-[11px] text-faint">Mods watch the video and release the reward if it&apos;s legit.</p>
+      <p className="text-center text-[11px] text-faint">Mods review your proof and release the reward if it&apos;s legit.</p>
+    </div>
+  );
+}
+
+function ProofMedia({ files }: { files: ProofFile[] }) {
+  if (!files.length) return null;
+  return (
+    <div className="mt-2 grid grid-cols-3 gap-2">
+      {files.map((f) => {
+        const src = `/api/files?path=${encodeURIComponent(f.pathname)}`;
+        if (f.contentType.startsWith("image/")) {
+          return (
+            <a key={f.pathname} href={src} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl bg-soft">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt={f.name} className="h-24 w-full object-cover" />
+            </a>
+          );
+        }
+        if (f.contentType.startsWith("video/")) {
+          return <video key={f.pathname} src={src} controls preload="metadata" className="h-24 w-full rounded-xl bg-black object-cover" />;
+        }
+        return (
+          <a key={f.pathname} href={src} target="_blank" rel="noreferrer" className="flex h-24 flex-col items-center justify-center gap-1 rounded-xl bg-soft text-xs text-muted">
+            <Paperclip size={16} />
+            <span className="max-w-full truncate px-2">{f.name}</span>
+          </a>
+        );
+      })}
     </div>
   );
 }
@@ -191,9 +272,12 @@ export function SubmissionRow({ s, canReview, onChanged }: { s: Sub; canReview: 
         <span className={`pill ${badge}`}>{s.status.toLowerCase()}</span>
         <span className="ml-auto text-[11px] text-faint">{new Date(s.createdAt).toLocaleDateString()}</span>
       </div>
-      <a href={s.videoUrl} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 truncate text-sm text-accent">
-        <ExternalLink size={13} /> {s.videoUrl}
-      </a>
+      {s.videoUrl && (
+        <a href={s.videoUrl} target="_blank" rel="noreferrer" className="mt-1 flex items-center gap-1 truncate text-sm text-accent">
+          <ExternalLink size={13} /> {s.videoUrl}
+        </a>
+      )}
+      <ProofMedia files={s.files ?? []} />
       {s.note && <p className="mt-1 text-sm text-muted">{s.note}</p>}
       {s.reviewNote && (
         <p className="mt-1 flex items-center gap-1 text-xs text-muted">

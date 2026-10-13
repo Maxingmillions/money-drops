@@ -19,17 +19,17 @@ export const GET = handler(async () => {
   });
   const stats = await campaignStats(campaigns.map((c) => c.id));
 
-  const foundCents = claims.reduce((s, c) => s + c.amountCents, 0);
-  const paidCents = claims
+  const foundLamports = claims.reduce((s, c) => s + c.amountLamports, 0);
+  const paidLamports = claims
     .filter((c) => c.payoutStatus === "PAID")
-    .reduce((s, c) => s + c.amountCents, 0);
+    .reduce((s, c) => s + c.amountLamports, 0);
 
   return json({
-    user: { id: user.id, wallet: user.wallet, handle: user.handle, role: user.role },
-    totals: { foundCents, paidCents, pendingCents: foundCents - paidCents, drops: claims.length },
+    user: { id: user.id, wallet: user.wallet, handle: user.handle, role: user.role, loginMethod: user.loginMethod, email: user.email, custodial: Boolean(user.custodialSecret) },
+    totals: { foundLamports, paidLamports, pendingLamports: foundLamports - paidLamports, drops: claims.length },
     claims: claims.map((c) => ({
       id: c.id,
-      amountCents: c.amountCents,
+      amountLamports: c.amountLamports,
       payoutStatus: c.payoutStatus,
       payoutTxSig: c.payoutTxSig,
       createdAt: c.createdAt,
@@ -41,7 +41,7 @@ export const GET = handler(async () => {
       title: c.title,
       kind: c.kind,
       status: c.status,
-      totalCents: c.totalCents,
+      totalLamports: c.totalLamports,
       areaName: c.areaName,
       startsAt: c.startsAt,
       endsAt: c.endsAt,

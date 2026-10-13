@@ -7,7 +7,7 @@ import { ChevronLeft, Plus, Crosshair, Sparkles, Eye, ShieldCheck, Compass, MapP
 import { DropMap, type MapHunt, type Viewport } from "./DropMap";
 import { Coin } from "./Coin";
 import { api } from "@/lib/client";
-import { formatDistance, formatUsd, walkMinutes, type LatLng } from "@/lib/geo";
+import { formatDistance, formatSol, walkMinutes, type LatLng } from "@/lib/geo";
 import { DEV_LOCATION, useGeolocation } from "@/hooks/useGeolocation";
 import type { PublicDrop } from "@/lib/drops";
 
@@ -72,21 +72,21 @@ export function MapScreen() {
   }, []);
 
   const selected = useMemo(() => drops.find((d) => d.id === selectedId) ?? null, [drops, selectedId]);
-  const bigAmount = useMemo(() => (drops.length ? Math.max(...drops.map((d) => d.amountCents)) : undefined), [drops]);
-  const total = drops.reduce((s, d) => s + d.amountCents, 0);
+  const bigAmount = useMemo(() => (drops.length ? Math.max(...drops.map((d) => d.amountLamports)) : undefined), [drops]);
+  const total = drops.reduce((s, d) => s + d.amountLamports, 0);
   const headline = selected?.campaign ?? drops[0]?.campaign ?? null;
-  const huntsTotal = hunts.reduce((s, h) => s + h.remainingCents, 0);
+  const huntsTotal = hunts.reduce((s, h) => s + h.remainingLamports, 0);
   const summary = zoomedOut
-    ? `${formatUsd(huntsTotal, { compact: true })} hidden across ${hunts.length} hunts`
+    ? `${formatSol(huntsTotal, { compact: true })} hidden across ${hunts.length} hunts`
     : drops.length
-      ? `${formatUsd(total, { compact: true })} in ${drops.length} drops in view`
+      ? `${formatSol(total, { compact: true })} in ${drops.length} drops in view`
       : "No drops in view · zoom out to see hunts";
 
   const mapDrops = drops.map((d) => ({
     id: d.id,
     lat: d.lat,
     lng: d.lng,
-    amountCents: d.amountCents,
+    amountLamports: d.amountLamports,
     exact: d.exact,
     searchRadiusM: d.campaign.searchRadiusM,
   }));
@@ -117,7 +117,7 @@ export function MapScreen() {
                 >
                   <Coin size={30} />
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold">{formatUsd(d.amountCents, { compact: true })} drop</div>
+                    <div className="text-sm font-semibold">{formatSol(d.amountLamports, { compact: true })} drop</div>
                     <div className="truncate text-xs text-muted">
                       {d.campaign.areaName ?? d.campaign.title} · {formatDistance(d.distanceM)}
                     </div>
@@ -131,7 +131,7 @@ export function MapScreen() {
                 <li key={h.id} className="border-b border-line px-5 py-3 text-sm">
                   <div className="font-semibold">{h.title}</div>
                   <div className="text-xs text-muted">
-                    {formatUsd(h.remainingCents, { compact: true })} · {h.remaining} drops left
+                    {formatSol(h.remainingLamports, { compact: true })} · {h.remaining} drops left
                   </div>
                 </li>
               ))}
@@ -237,7 +237,7 @@ function DropDetail({ drop, onHunt }: { drop: PublicDrop; onHunt: () => void }) 
       <div className="flex items-center gap-3">
         <Coin size={44} />
         <div>
-          <div className="text-[22px] font-bold leading-tight">{formatUsd(drop.amountCents, { compact: true })} drop</div>
+          <div className="text-[22px] font-bold leading-tight">{formatSol(drop.amountLamports, { compact: true })} drop</div>
           <div className="text-sm text-muted">
             {drop.campaign.areaName ? `${drop.campaign.areaName} · ` : ""}
             {Number.isFinite(drop.distanceM)

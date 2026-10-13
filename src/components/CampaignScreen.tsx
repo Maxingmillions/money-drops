@@ -2,13 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, Check, Copy } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { DropMap } from "./DropMap";
 import { Coin } from "./Coin";
 import { FundWithWallet } from "./FundWithWallet";
-import { PRIVY_APP_ID } from "./Providers";
 import { api } from "@/lib/client";
-import { formatUsd } from "@/lib/geo";
+import { formatSol } from "@/lib/geo";
 import { explorerTxUrl } from "@/lib/solana";
 
 export type CampaignDetail = {
@@ -17,8 +16,8 @@ export type CampaignDetail = {
     title: string;
     kind: string;
     status: string;
-    totalCents: number;
-    claimedCents: number;
+    totalLamports: number;
+    claimedLamports: number;
     perPersonLimit: number;
     centerLat: number;
     centerLng: number;
@@ -31,10 +30,10 @@ export type CampaignDetail = {
     remaining: number;
     bigRemaining: number;
     bigTotal: number;
-    tiers: { amountCents: number; count: number; remaining: number }[];
-    drops: { amountCents: number; status: string; lat: number; lng: number }[];
+    tiers: { amountLamports: number; count: number; remaining: number }[];
+    drops: { amountLamports: number; status: string; lat: number; lng: number }[];
   };
-  funding: { treasury: string | null; memo: string; amountCents: number } | null;
+  funding: { treasury: string | null; memo: string; lamports: number; feeLamports: number; wallet: string } | null;
 };
 
 export function CampaignScreen({ id }: { id: string }) {
@@ -56,8 +55,8 @@ export function CampaignScreen({ id }: { id: string }) {
   if (error) return <main className="p-6 text-center text-sm text-danger">{error}</main>;
   if (!data) return <main className="p-6 text-center text-sm text-muted">Loading…</main>;
   const c = data.campaign;
-  const drops = c.drops.map((d, i) => ({ id: String(i), lat: d.lat, lng: d.lng, amountCents: d.amountCents }));
-  const big = Math.max(...c.tiers.map((t) => t.amountCents));
+  const drops = c.drops.map((d, i) => ({ id: String(i), lat: d.lat, lng: d.lng, amountLamports: d.amountLamports }));
+  const big = Math.max(...c.tiers.map((t) => t.amountLamports));
 
   return (
     <main className="min-h-dvh pb-28 lg:grid lg:min-h-0 lg:grid-cols-[480px_minmax(0,1fr)] lg:pb-0">
@@ -87,9 +86,9 @@ export function CampaignScreen({ id }: { id: string }) {
         </div>
 
         <div className="mt-6 text-center">
-          <div className="text-[44px] font-bold leading-none tracking-tight">{formatUsd(c.totalCents, { compact: true })}</div>
+          <div className="text-[44px] font-bold leading-none tracking-tight">{formatSol(c.totalLamports, { compact: true })}</div>
           <div className="mt-1 text-sm text-muted">
-            {c.remaining} of {c.dropCount} drops still hidden · {formatUsd(c.claimedCents, { compact: true })} found
+            {c.remaining} of {c.dropCount} drops still hidden · {formatSol(c.claimedLamports, { compact: true })} found
           </div>
           <div className="mt-3">
             <StatusPill status={c.status} />
@@ -98,15 +97,14 @@ export function CampaignScreen({ id }: { id: string }) {
 
         {data.funding && (
           <section className="card mt-6 p-4">
-            <h3 className="text-sm font-semibold">Fund this drop to make it live</h3>
+            <h3 className="text-sm font-semibold">Pay to make this hunt live</h3>
             <p className="mt-1 text-xs text-muted">
-              Send {formatUsd(data.funding.amountCents)} USDC to the Money Drops escrow with your campaign id as the memo.
-              Unclaimed money is returned to you.
+              {formatSol(data.funding.lamports)} from your wallet: the hunt plus a {formatSol(data.funding.feeLamports)} fee (half of every fee feeds the community drop pool). Unclaimed drops come back to you.
             </p>
-            {PRIVY_APP_ID && data.funding.treasury ? (
-              <FundWithWallet campaignId={c.id} amountCents={data.funding.amountCents} treasury={data.funding.treasury} onFunded={load} />
+            {data.funding.treasury ? (
+              <FundWithWallet memo={c.id} lamports={data.funding.lamports} treasury={data.funding.treasury} wallet={data.funding.wallet} fundPath={`/api/campaigns/${c.id}/fund`} onFunded={load} />
             ) : (
-              <ManualFunding campaignId={c.id} treasury={data.funding.treasury} onFunded={load} />
+              <p className="mt-2 text-xs text-danger">Escrow wallet isn&apos;t configured on this server.</p>
             )}
           </section>
         )}
@@ -114,10 +112,10 @@ export function CampaignScreen({ id }: { id: string }) {
         <h3 className="mt-6 mb-2 text-sm font-semibold">Drops</h3>
         <div className="row-list text-sm">
           {c.tiers.map((t) => (
-            <div key={t.amountCents} className="flex items-center gap-3 px-4 py-3">
+            <div key={t.amountLamports} className="flex items-center gap-3 px-4 py-3">
               <Coin size={22} />
               <span>
-                {t.count} {t.count === 1 ? "drop" : "drops"} of {formatUsd(t.amountCents, { compact: true })}
+                {t.count} {t.count === 1 ? "drop" : "drops"} of {formatSol(t.amountLamports, { compact: true })}
               </span>
               <span className="ml-auto text-muted">{t.remaining} left</span>
             </div>
@@ -170,53 +168,6 @@ function Row({ k, v }: { k: string; v: React.ReactNode }) {
     <div className="flex items-center justify-between px-4 py-3">
       <span className="text-muted">{k}</span>
       <span className="font-semibold">{v}</span>
-    </div>
-  );
-}
-
-function ManualFunding({ campaignId, treasury, onFunded }: { campaignId: string; treasury: string | null; onFunded: () => void }) {
-  const [sig, setSig] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
-  const copy = async (k: string, v: string) => {
-    await navigator.clipboard.writeText(v).catch(() => {});
-    setCopied(k);
-    setTimeout(() => setCopied(null), 1200);
-  };
-  if (!treasury) {
-    return <p className="mt-3 text-xs text-danger">Escrow wallet isn&apos;t configured on this server (NEXT_PUBLIC_TREASURY_ADDRESS).</p>;
-  }
-  return (
-    <div className="mt-3 space-y-2 text-xs">
-      <button className="flex w-full items-center justify-between rounded-xl bg-soft px-3 py-2 font-mono" onClick={() => copy("t", treasury)}>
-        <span className="truncate">{treasury}</span>
-        {copied === "t" ? <Check size={14} /> : <Copy size={14} />}
-      </button>
-      <button className="flex w-full items-center justify-between rounded-xl bg-soft px-3 py-2 font-mono" onClick={() => copy("m", campaignId)}>
-        <span className="truncate">memo: {campaignId}</span>
-        {copied === "m" ? <Check size={14} /> : <Copy size={14} />}
-      </button>
-      <input className="input !text-xs" placeholder="Paste the transaction signature" value={sig} onChange={(e) => setSig(e.target.value.trim())} />
-      <button
-        className="btn btn-primary w-full !py-3 text-sm"
-        disabled={busy || sig.length < 64}
-        onClick={async () => {
-          setBusy(true);
-          setMsg(null);
-          try {
-            await api(`/api/campaigns/${campaignId}/fund`, { method: "POST", json: { signature: sig } });
-            onFunded();
-          } catch (e) {
-            setMsg(e instanceof Error ? e.message : "Verification failed");
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        Verify deposit
-      </button>
-      {msg && <p className="text-danger">{msg}</p>}
     </div>
   );
 }

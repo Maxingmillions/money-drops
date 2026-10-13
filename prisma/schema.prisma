@@ -1,7 +1,8 @@
 // Money Drops data model.
 //
-// Money amounts are stored as integer USDC cents (1 USDC = 100 cents).
-// On-chain USDC has 6 decimals, so cents * 10_000 = base units.
+// Money amounts are SOL stored as integer lamports (1 SOL = 1e9 lamports)
+// in Float columns: doubles hold integers exactly up to 2^53, far beyond
+// any plausible amount, and stay JSON-friendly.
 //
 // Database: Postgres (Neon on Vercel, or any Postgres locally).
 
@@ -24,10 +25,19 @@ model User {
   wallet    String   @unique
   /// Privy DID (did:privy:...). Null for dev-login users.
   privyId   String?  @unique
-  email     String?
-  /// How the user first signed in: wallet | google | apple | email | dev ...
+  email     String?  @unique
+  /// bcrypt hash for email + password accounts.
+  passwordHash String?
+  /// Encrypted secret key of the custodial wallet we created for accounts
+  /// that signed up without a wallet (email). Null for external wallets.
+  custodialSecret String?
+  /// How the user first signed in: wallet | email | google | apple | dev ...
   loginMethod String?
   handle    String?  @unique
+  /// Last reported position (from the hunt map) so pool drops land near people.
+  lastLat    Float?
+  lastLng    Float?
+  lastSeenAt DateTime?
   /// USER | MOD | ADMIN. Mods review bounty submissions.
   role      String   @default("USER")
   createdAt DateTime @default(now())
@@ -51,7 +61,7 @@ model Campaign {
   kind      String  @default("PROXIMITY")
   status    String  @default("DRAFT") // DRAFT | ACTIVE | ENDED | REFUNDED
 
-  totalCents     Int
+  totalLamports  Float @default(0)
   perPersonLimit Int @default(1)
   /// Hunters see a search circle of this radius; the real spot is somewhere inside.
   searchRadiusM  Int @default(80)
@@ -75,7 +85,7 @@ model Campaign {
   refundTxSig  String?
   /// Set when a mod takes the campaign down.
   modNote      String?
-  refundedCents Int?
+  refundedLamports Float?
 
   createdAt DateTime @default(now())
 
@@ -87,7 +97,7 @@ model Drop {
   id         String   @id @default(cuid())
   campaignId String
   campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  amountCents Int
+  amountLamports Float @default(0)
   lat        Float
   lng        Float
   status     String   @default("HIDDEN") // HIDDEN | CLAIMED | RETURNED
@@ -106,7 +116,7 @@ model Claim {
   campaign   Campaign @relation(fields: [campaignId], references: [id])
   userId     String
   user       User     @relation(fields: [userId], references: [id])
-  amountCents Int
+  amountLamports Float @default(0)
   lat        Float
   lng        Float
   distanceM  Float
@@ -136,21 +146,21 @@ model Bounty {
   creator     User     @relation(fields: [creatorId], references: [id])
   title       String
   description String
-  rewardCents Int
+  rewardLamports Float @default(0)
   /// Optional place the task must happen.
   lat         Float?
   lng         Float?
   radiusM     Int?
   areaName    String?
   deadline    DateTime?
-  /// How many approved submissions get paid (each gets rewardCents).
+  /// How many approved submissions get paid (each gets rewardLamports).
   maxWinners  Int      @default(1)
   /// DRAFT (unfunded) | OPEN | COMPLETED | CLOSED | REFUNDED
   status      String   @default("DRAFT")
   fundingTxSig String? @unique
   fundedAt    DateTime?
   refundTxSig String?
-  refundedCents Int?
+  refundedLamports Float?
   /// Set when a mod takes the bounty down.
   modNote     String?
   createdAt   DateTime @default(now())
@@ -166,8 +176,12 @@ model Submission {
   bounty     Bounty   @relation(fields: [bountyId], references: [id], onDelete: Cascade)
   userId     String
   user       User     @relation(fields: [userId], references: [id])
-  /// Link to the proof video (YouTube, TikTok, X, Drive...).
-  videoUrl   String
+  /// Optional link to the proof video (YouTube, TikTok, X, Drive...).
+  videoUrl   String?
+  /// Up to 3 uploaded proofs: [{ pathname, contentType, size, name }].
+  /// Served through /api/files, which only lets mods, the submitter and the
+  /// creator see them until the submission is approved.
+  files      Json     @default("[]")
   note       String?
   /// PENDING | APPROVED | REJECTED
   status     String   @default("PENDING")
@@ -194,4 +208,32 @@ model Message {
   createdAt DateTime @default(now())
 
   @@index([room, createdAt])
+}
+
+/// Platform fee ledger and the community drop pool (single row, id "main").
+model Pool {
+  id                 String   @id @default("main")
+  balanceLamports    Float    @default(0)
+  feesCollectedLamports Float @default(0)
+  poolCollectedLamports Float @default(0)
+  droppedLamports    Float    @default(0)
+  runs               Int      @default(0)
+  lastRunAt          DateTime?
+  updatedAt          DateTime @updatedAt
+}
+
+/// One row per fee taken or pool drop made.
+model PoolEvent {
+  id        String   @id @default(cuid())
+  kind      String   // FEE | DROP
+  lamports  Float
+  /// For FEE: the half that went to the pool. For DROP: equals lamports.
+  poolLamports Float
+  source    String?  // "campaign:<id>" | "bounty:<id>"
+  campaignId String?
+  areaName  String?
+  onChain   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

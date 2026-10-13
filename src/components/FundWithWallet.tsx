@@ -1,78 +1,83 @@
 "use client";
 
 import { useState } from "react";
-import { useSignAndSendTransaction, useWallets } from "@privy-io/react-auth/solana";
-import { PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
-import {
-  createAssociatedTokenAccountIdempotentInstruction,
-  createTransferCheckedInstruction,
-  getAssociatedTokenAddressSync,
-} from "@solana/spl-token";
+import { PublicKey, SystemProgram, Transaction, TransactionInstruction } from "@solana/web3.js";
+import type { WalletAccount } from "@wallet-standard/base";
 import bs58 from "bs58";
 import { Wallet } from "lucide-react";
 import { api } from "@/lib/client";
-import { formatUsd } from "@/lib/geo";
-import { CLUSTER, MEMO_PROGRAM_ID, USDC_DECIMALS, USDC_MINT, centsToBaseUnits, connection } from "@/lib/solana";
+import { formatSol } from "@/lib/geo";
+import { CLUSTER, MEMO_PROGRAM_ID, connection } from "@/lib/solana";
+import { useSolanaWallets } from "@/hooks/useSolanaWallets";
+
+type SignAndSend = {
+  signAndSendTransaction: (input: { account: WalletAccount; transaction: Uint8Array; chain: string }) => Promise<readonly { signature: Uint8Array }[]>;
+};
+type Connect = { connect: (opts?: { silent?: boolean }) => Promise<{ accounts: readonly WalletAccount[] }> };
 
 /**
- * Builds a USDC transfer (with the campaign id as memo) to the escrow wallet,
- * has the user's Privy wallet sign and send it, then asks the server to verify.
+ * Pays SOL from the signed-in wallet into escrow (system transfer + memo),
+ * then asks the server to verify the deposit and open the post.
  */
 export function FundWithWallet({
-  campaignId,
-  amountCents,
+  memo,
+  lamports,
   treasury,
-  onFunded,
+  wallet,
   fundPath,
+  onFunded,
 }: {
-  campaignId: string;
-  amountCents: number;
+  memo: string;
+  lamports: number;
   treasury: string;
+  /** The wallet address on the session; the connected wallet must match. */
+  wallet: string;
+  fundPath: string;
   onFunded: () => void;
-  /** API route that verifies the deposit. Defaults to the campaign route. */
-  fundPath?: string;
 }) {
-  const { wallets, ready } = useWallets();
-  const { signAndSendTransaction } = useSignAndSendTransaction();
+  const { wallets } = useSolanaWallets();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const wallet = wallets[0];
 
   const fund = async () => {
-    if (!wallet) return;
     setBusy(true);
     setMsg(null);
     try {
-      const conn = connection();
-      const owner = new PublicKey(wallet.address);
-      const to = new PublicKey(treasury);
-      const fromAta = getAssociatedTokenAddressSync(USDC_MINT, owner);
-      const toAta = getAssociatedTokenAddressSync(USDC_MINT, to);
+      // Find an installed wallet that holds the session's address.
+      let account: WalletAccount | null = null;
+      let provider: (typeof wallets)[number] | null = null;
+      for (const w of wallets) {
+        const { accounts } = await (w.features["standard:connect"] as Connect).connect().catch(() => ({ accounts: [] as WalletAccount[] }));
+        const hit = accounts.find((a) => a.address === wallet);
+        if (hit) {
+          account = hit;
+          provider = w;
+          break;
+        }
+      }
+      if (!account || !provider) throw new Error(`Connect the wallet ${wallet.slice(0, 4)}…${wallet.slice(-4)} to pay`);
 
+      const conn = connection();
+      const from = new PublicKey(wallet);
       const tx = new Transaction().add(
-        createAssociatedTokenAccountIdempotentInstruction(owner, toAta, to, USDC_MINT),
-        createTransferCheckedInstruction(fromAta, USDC_MINT, toAta, owner, centsToBaseUnits(amountCents), USDC_DECIMALS),
-        new TransactionInstruction({
-          programId: MEMO_PROGRAM_ID,
-          keys: [],
-          data: Buffer.from(campaignId, "utf8"),
-        }),
+        SystemProgram.transfer({ fromPubkey: from, toPubkey: new PublicKey(treasury), lamports: Math.round(lamports) }),
+        new TransactionInstruction({ programId: MEMO_PROGRAM_ID, keys: [], data: Buffer.from(memo, "utf8") }),
       );
-      tx.feePayer = owner;
+      tx.feePayer = from;
       tx.recentBlockhash = (await conn.getLatestBlockhash("confirmed")).blockhash;
 
-      const { signature } = await signAndSendTransaction({
+      const [out] = await (provider.features["solana:signAndSendTransaction"] as SignAndSend).signAndSendTransaction({
+        account,
         transaction: tx.serialize({ requireAllSignatures: false, verifySignatures: false }),
-        wallet,
         chain: CLUSTER === "mainnet-beta" ? "solana:mainnet" : "solana:devnet",
       });
-      const sig = bs58.encode(signature);
-      setMsg("Sent. Verifying deposit…");
+      const sig = bs58.encode(out.signature);
+      setMsg("Sent. Waiting for confirmation…");
       await conn.confirmTransaction(sig, "confirmed").catch(() => {});
-      await api(fundPath ?? `/api/campaigns/${campaignId}/fund`, { method: "POST", json: { signature: sig } });
+      await api(fundPath, { method: "POST", json: { signature: sig } });
       onFunded();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Funding failed");
+      setMsg(e instanceof Error ? e.message : "Payment failed");
     } finally {
       setBusy(false);
     }
@@ -80,13 +85,13 @@ export function FundWithWallet({
 
   return (
     <div className="mt-3">
-      <button className="btn btn-primary w-full" disabled={!ready || !wallet || busy} onClick={fund}>
-        <Wallet size={16} /> Fund {formatUsd(amountCents)} USDC
+      <button className="btn btn-primary w-full" disabled={busy || wallets.length === 0} onClick={fund}>
+        <Wallet size={16} /> Pay {formatSol(lamports)} from your wallet
       </button>
-      {!wallet && ready && <p className="mt-2 text-xs text-muted">No Solana wallet connected.</p>}
+      {wallets.length === 0 && <p className="mt-2 text-xs text-muted">No Solana wallet detected in this browser.</p>}
       {msg && <p className="mt-2 text-xs text-muted">{msg}</p>}
       <p className="mt-2 text-[11px] text-faint">
-        {CLUSTER === "devnet" ? "Devnet: get test USDC from faucet.circle.com." : "Mainnet USDC."}
+        {CLUSTER === "devnet" ? "Devnet SOL. Get some from faucet.solana.com." : "Mainnet SOL."} Unclaimed money comes back to you.
       </p>
     </div>
   );

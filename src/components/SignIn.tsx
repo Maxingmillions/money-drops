@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useIdentityToken, useLogin, usePrivy } from "@privy-io/react-auth";
 import { useWallets } from "@privy-io/react-auth/solana";
-import { Mail, Sparkles, FlaskConical, Smartphone, ExternalLink } from "lucide-react";
+import { Mail, Sparkles, FlaskConical, Smartphone, ExternalLink, KeyRound } from "lucide-react";
 import { SolCoin } from "./SolCoin";
 import { DropsTokenCard } from "./DropsToken";
 import { PRIVY_APP_ID } from "./Providers";
@@ -44,16 +44,11 @@ export function SignIn() {
         <div className="w-full max-w-[380px] space-y-3">
           <h2 className="hidden text-2xl font-bold lg:block">Sign in</h2>
           <WalletButtons onDone={finish} />
-          {PRIVY_APP_ID ? (
-            <PrivySocial onDone={finish} />
-          ) : (
-            <button className="btn btn-ghost w-full opacity-60" disabled title="Needs a Privy app id">
-              <Mail size={18} /> Google, Apple or email · coming soon
-            </button>
-          )}
+          <EmailForm onDone={finish} />
+          {PRIVY_APP_ID && <PrivySocial onDone={finish} />}
           <p className="px-4 text-center text-xs text-faint">
             <Sparkles className="mr-1 inline" size={12} />
-            No wallet? Google or Apple sign-in creates a Solana wallet for you.
+            No wallet? Email sign-up creates a Solana wallet for you.
           </p>
           {DEV_LOGIN_UI && <DevButton onDone={finish} />}
         </div>
@@ -173,6 +168,61 @@ function PrivySocial({ onDone }: { onDone: () => void }) {
         </p>
       )}
     </div>
+  );
+}
+
+/** Email + password. New accounts get a Solana wallet created for them. */
+function EmailForm({ onDone }: { onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"login" | "signup">("signup");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [handle, setHandle] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!open) {
+    return (
+      <button className="btn btn-ghost w-full" onClick={() => setOpen(true)}>
+        <Mail size={18} /> Continue with email
+      </button>
+    );
+  }
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/api/auth/email/${mode}`, {
+        method: "POST",
+        json: mode === "signup" ? { email, password, handle: handle.trim() || undefined } : { email, password },
+      });
+      onDone();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form onSubmit={submit} className="card pop-in space-y-2 p-4">
+      <div className="grid grid-cols-2 gap-1 rounded-xl bg-soft p-1 text-sm font-semibold">
+        <button type="button" className={`rounded-lg py-1.5 ${mode === "signup" ? "bg-elev shadow" : "text-muted"}`} onClick={() => setMode("signup")}>
+          Sign up
+        </button>
+        <button type="button" className={`rounded-lg py-1.5 ${mode === "login" ? "bg-elev shadow" : "text-muted"}`} onClick={() => setMode("login")}>
+          Sign in
+        </button>
+      </div>
+      <input className="input" type="email" placeholder="Email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      <input className="input" type="password" placeholder={mode === "signup" ? "Password (8+ characters)" : "Password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
+      {mode === "signup" && <input className="input" placeholder="Username (optional)" value={handle} onChange={(e) => setHandle(e.target.value)} maxLength={24} />}
+      {error && <p className="text-sm text-danger">{error}</p>}
+      <button type="submit" className="btn btn-primary w-full" disabled={busy}>
+        <KeyRound size={16} /> {mode === "signup" ? "Create account" : "Sign in"}
+      </button>
+      {mode === "signup" && <p className="text-center text-[11px] text-faint">We create a Solana wallet for you. Payouts land there.</p>}
+    </form>
   );
 }
 
