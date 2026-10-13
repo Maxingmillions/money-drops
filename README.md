@@ -17,9 +17,17 @@ A mobile-first web app (installable PWA, also works on desktop) built with Next.
 - Hunt screen: live distance, compass needle, warmer/colder, mini map.
 - Claim screen: camera backdrop, hold-to-claim, instant "You found $X" card. Claims are validated server-side (distance, one-per-person, campaign window) and the drop is flipped atomically so two people can't take the same one.
 
-**Creators**
-- "Hide money": name the drop, pick proximity or event mode, set tiers (e.g. 20 × $5, 5 × $20, 1 × $100), tap the map to choose the area and radius, set the search circle size, time window and per-person limit.
-- Campaign page: live stats per tier, drop map, escrow deposit link.
+**Hiders**
+- "Hide money" is four inputs: amount, how many drops, tap the map, spread radius (up to about a mile). Drops split evenly and go live right away.
+- Campaign page: live stats, drop map, escrow deposit link.
+
+**Bounties**
+- Anyone posts a task with a USDC reward, optional place and radius, deadline and number of winners. The reward is held in escrow.
+- Hunters submit a video link as proof. Mods review a queue, approve or reject with a note, and approval pays the reward to the submitter's wallet.
+- Mods: wallets in `ADMIN_WALLETS` become admins on sign-in; admins can promote mods in the database (`role = MOD`).
+
+**Chat**
+- A global room (polling every 3 s, no extra services). Mods get a shield badge.
 
 **Money (Solana)**
 - Amounts are USDC. Campaigns are funded by sending USDC to the Money Drops escrow wallet with the campaign id as the memo; the server verifies the deposit on-chain and activates the campaign.
@@ -40,6 +48,7 @@ A mobile-first web app (installable PWA, also works on desktop) built with Next.
    | `DEV_SKIP_FUNDING` | `true` (campaigns go live without an on-chain deposit) |
    | `NEXT_PUBLIC_DEV_LOCATION` | `true` (optional: tap the map to teleport) |
    | `SEED_DEMO` | `true` (optional: seeds the Tokyo demo hunt on first build) |
+   | `ADMIN_WALLETS` | your wallet address, so you can review bounties |
 
 4. Deploy. The build runs `prisma db push`, seeds if asked, then builds the app.
 
@@ -99,9 +108,9 @@ Fund the treasury with a little SOL for fees (`solana airdrop 1 <address> --url 
 
 ```
 prisma/schema.prisma      User, Campaign, Drop, Claim
-src/app/api/              auth (nonce + verify for wallets, privy, dev), me, drops, campaigns
+src/app/api/              auth (nonce + verify for wallets, privy, dev), me, drops, campaigns, bounties, submissions, mod, chat
 src/lib/                  geo math, session cookies, Privy verification, Solana escrow/payout, data access
-src/components/           screens: SignIn, Home, MapScreen, HuntScreen, ClaimScreen, HideScreen, CampaignScreen
+src/components/           screens: SignIn, Home, MapScreen, HuntScreen, ClaimScreen, HideScreen, CampaignScreen, BountiesScreen, NewBountyScreen, BountyScreen, ModScreen, ChatScreen
 src/hooks/                useGeolocation (with dev simulation), useCompassHeading, useSolanaWallets (Wallet Standard)
 src/proxy.ts              redirects signed-out users to /sign-in
 ```
@@ -109,6 +118,8 @@ src/proxy.ts              redirects signed-out users to /sign-in
 ## Roadmap
 
 - Non-custodial escrow program (Anchor) so creators' funds never sit in a server-held key.
+- Direct video upload for bounty proof (Vercel Blob) instead of links; dispute flow and mod audit log.
+- Per-city chat rooms and realtime delivery.
 - "Only public places": filter generated drop locations against OSM parks/footways and exclude roads, rail and private property.
 - Anti-spoofing: GPS plausibility checks, speed limits between claims, device attestation.
 - Clustering on the map at low zoom, push notifications when a drop is nearby.

@@ -3,8 +3,9 @@ import { Keypair, PublicKey } from "@solana/web3.js";
 import { prisma } from "@/lib/db";
 import { ApiError, handler, json, parseBody } from "@/lib/api";
 import { createSession } from "@/lib/session";
+import { syncRole } from "@/lib/roles";
 
-const Body = z.object({ wallet: z.string().min(32).max(44).optional() });
+const Body = z.object({ wallet: z.string().min(32).max(44).optional(), mod: z.boolean().optional() });
 
 /**
  * Test sign-in: creates a session for any wallet address (or a fresh random
@@ -25,9 +26,10 @@ export const POST = handler(async (req) => {
   }
   const user = await prisma.user.upsert({
     where: { wallet },
-    update: {},
-    create: { wallet, loginMethod: "dev" },
+    update: body.mod ? { role: "MOD" } : {},
+    create: { wallet, loginMethod: "dev", role: body.mod ? "MOD" : "USER" },
   });
+  await syncRole(user.id, user.wallet);
   await createSession({ userId: user.id, wallet: user.wallet });
   return json({ user: { id: user.id, wallet: user.wallet, handle: user.handle } });
 });

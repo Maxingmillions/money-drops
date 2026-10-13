@@ -2,6 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { ApiError, handler, json, parseBody } from "@/lib/api";
 import { createSession } from "@/lib/session";
+import { syncRole } from "@/lib/roles";
 import { buildSignInMessage, verifySignature } from "@/lib/siws";
 
 const Body = z.object({
@@ -31,6 +32,7 @@ export const POST = handler(async (req) => {
     update: {},
     create: { wallet: body.wallet, loginMethod: "wallet" },
   });
+  await syncRole(user.id, user.wallet);
   await createSession({ userId: user.id, wallet: user.wallet });
   return json({ user: { id: user.id, wallet: user.wallet, handle: user.handle } });
 });

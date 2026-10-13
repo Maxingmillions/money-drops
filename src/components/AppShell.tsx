@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Wallet, Map as MapIcon, Plus, LogOut, LineChart } from "lucide-react";
+import { Wallet, Map as MapIcon, Plus, LogOut, LineChart, Target, MessageCircle } from "lucide-react";
 import { Coin } from "./Coin";
 import { BottomNav } from "./BottomNav";
 import { api } from "@/lib/client";
@@ -11,11 +11,13 @@ const items = [
   { href: "/home", label: "Wallet", Icon: Wallet },
   { href: "/map", label: "Hunt", Icon: MapIcon },
   { href: "/hide", label: "Hide money", Icon: Plus },
+  { href: "/bounties", label: "Bounties", Icon: Target },
+  { href: "/chat", label: "Chat", Icon: MessageCircle },
   { href: "/token", label: "$DROPS", Icon: LineChart },
 ];
 
 // Full-screen flows hide the mobile bottom nav.
-const NO_MOBILE_NAV = ["/hunt/", "/claim/"];
+const NO_MOBILE_NAV = ["/hunt/", "/claim/", "/hide", "/bounties/new", "/chat"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();

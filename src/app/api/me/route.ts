@@ -25,7 +25,7 @@ export const GET = handler(async () => {
     .reduce((s, c) => s + c.amountCents, 0);
 
   return json({
-    user: { id: user.id, wallet: user.wallet, handle: user.handle },
+    user: { id: user.id, wallet: user.wallet, handle: user.handle, role: user.role },
     totals: { foundCents, paidCents, pendingCents: foundCents - paidCents, drops: claims.length },
     claims: claims.map((c) => ({
       id: c.id,

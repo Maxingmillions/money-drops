@@ -23,11 +23,14 @@ export function FundWithWallet({
   amountCents,
   treasury,
   onFunded,
+  fundPath,
 }: {
   campaignId: string;
   amountCents: number;
   treasury: string;
   onFunded: () => void;
+  /** API route that verifies the deposit. Defaults to the campaign route. */
+  fundPath?: string;
 }) {
   const { wallets, ready } = useWallets();
   const { signAndSendTransaction } = useSignAndSendTransaction();
@@ -66,7 +69,7 @@ export function FundWithWallet({
       const sig = bs58.encode(signature);
       setMsg("Sent. Verifying deposit…");
       await conn.confirmTransaction(sig, "confirmed").catch(() => {});
-      await api(`/api/campaigns/${campaignId}/fund`, { method: "POST", json: { signature: sig } });
+      await api(fundPath ?? `/api/campaigns/${campaignId}/fund`, { method: "POST", json: { signature: sig } });
       onFunded();
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Funding failed");

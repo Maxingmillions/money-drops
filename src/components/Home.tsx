@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
-import { ChevronRight, Eye, EyeOff, LogOut, ArrowUp, Plus, Copy, Check } from "lucide-react";
+import { ChevronRight, Eye, EyeOff, LogOut, ArrowUp, Plus, Copy, Check, Target, Shield } from "lucide-react";
 import { Coin } from "./Coin";
 import { DropsTokenCard } from "./DropsToken";
 import { PRIVY_APP_ID } from "./Providers";
@@ -15,7 +15,7 @@ import type { PublicDrop } from "@/lib/drops";
 import { explorerTxUrl } from "@/lib/solana";
 
 type Me = {
-  user: { id: string; wallet: string; handle: string | null };
+  user: { id: string; wallet: string; handle: string | null; role: string };
   totals: { foundCents: number; paidCents: number; pendingCents: number; drops: number };
   claims: {
     id: string;
@@ -97,11 +97,17 @@ export function Home() {
         </div>
       )}
 
-      <div className="mt-6 grid grid-cols-3 gap-3 lg:max-w-[360px]">
+      <div className="mt-6 grid grid-cols-4 gap-3 lg:max-w-[440px]">
         <Action href="/map" Icon={ArrowUp} label="Hunt" rotate />
         <Action href="/hide" Icon={Plus} label="Hide" />
+        <Action href="/bounties" Icon={Target} label="Bounties" />
         <WalletAction wallet={me?.user.wallet} />
       </div>
+      {(me?.user.role === "MOD" || me?.user.role === "ADMIN") && (
+        <Link href="/mod" className="mt-4 flex items-center gap-2 text-sm font-semibold text-accent">
+          <Shield size={16} /> Open the review queue
+        </Link>
+      )}
 
       <div className="mt-8">
         <DropsTokenCard />

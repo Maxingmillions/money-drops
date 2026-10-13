@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Wallet, Map as MapIcon, Plus, LineChart } from "lucide-react";
+import { Wallet, Map as MapIcon, Target, MessageCircle } from "lucide-react";
 
 const items = [
   { href: "/home", label: "Wallet", Icon: Wallet },
   { href: "/map", label: "Hunt", Icon: MapIcon },
-  { href: "/hide", label: "Hide", Icon: Plus },
-  { href: "/token", label: "$DROPS", Icon: LineChart },
+  { href: "/bounties", label: "Bounties", Icon: Target },
+  { href: "/chat", label: "Chat", Icon: MessageCircle },
 ];
 
 export function BottomNav() {

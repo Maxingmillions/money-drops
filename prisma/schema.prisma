@@ -28,10 +28,16 @@ model User {
   /// How the user first signed in: wallet | google | apple | email | dev ...
   loginMethod String?
   handle    String?  @unique
+  /// USER | MOD | ADMIN. Mods review bounty submissions.
+  role      String   @default("USER")
   createdAt DateTime @default(now())
 
-  campaigns Campaign[]
-  claims    Claim[]
+  campaigns   Campaign[]
+  claims      Claim[]
+  bounties    Bounty[]
+  submissions Submission[]
+  reviews     Submission[] @relation("reviewer")
+  messages    Message[]
 }
 
 /// A drop campaign: one "Hide money" action that scatters many drops.
@@ -118,4 +124,67 @@ model Nonce {
   wallet    String
   expiresAt DateTime
   usedAt    DateTime?
+}
+
+/// A bounty: go somewhere, do something, prove it on video, get paid.
+model Bounty {
+  id          String   @id @default(cuid())
+  creatorId   String
+  creator     User     @relation(fields: [creatorId], references: [id])
+  title       String
+  description String
+  rewardCents Int
+  /// Optional place the task must happen.
+  lat         Float?
+  lng         Float?
+  radiusM     Int?
+  areaName    String?
+  deadline    DateTime?
+  /// How many approved submissions get paid (each gets rewardCents).
+  maxWinners  Int      @default(1)
+  /// DRAFT (unfunded) | OPEN | COMPLETED | CLOSED | REFUNDED
+  status      String   @default("DRAFT")
+  fundingTxSig String? @unique
+  fundedAt    DateTime?
+  createdAt   DateTime @default(now())
+
+  submissions Submission[]
+
+  @@index([status, createdAt])
+}
+
+model Submission {
+  id         String   @id @default(cuid())
+  bountyId   String
+  bounty     Bounty   @relation(fields: [bountyId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  /// Link to the proof video (YouTube, TikTok, X, Drive...).
+  videoUrl   String
+  note       String?
+  /// PENDING | APPROVED | REJECTED
+  status     String   @default("PENDING")
+  reviewerId String?
+  reviewer   User?    @relation("reviewer", fields: [reviewerId], references: [id])
+  reviewNote String?
+  reviewedAt DateTime?
+  payoutStatus String  @default("PENDING")
+  payoutTxSig  String?
+  payoutError  String?
+  createdAt  DateTime @default(now())
+
+  @@unique([bountyId, userId])
+  @@index([status, createdAt])
+}
+
+/// Chat messages. `room` is "global" for now; per-city rooms later.
+model Message {
+  id        String   @id @default(cuid())
+  room      String   @default("global")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([room, createdAt])
 }
